@@ -3,24 +3,39 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* CUNY Buddies brand tokens */
+  --brand: #6c5cf0;
+  --brand-hover: #5b4ae0;
+  --brand-soft: #e7e3fb;
+  --brand-soft-fg: #2f2a66;
+  --bg: #f5f4fb;
+  --surface: #ffffff;
+  --border: #e6e4f2;
+  --muted: #6b7280;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-fg: var(--brand-soft-fg);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* The wireframes are a single light theme (black text on the purple panel,
+   dark text on white cards), so the app renders light regardless of OS
+   preference. Revisit if a dark theme is designed later. */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
