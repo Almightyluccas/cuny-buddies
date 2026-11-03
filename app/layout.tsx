@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CUNY Buddies",
-  description: "Upload your CUNY schedule and find friends!",
+  description: "Find classmates who are free when you are.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# claude code (symlink to AGENTS.md; content is committed there)
+/CLAUDE.md
+
 # debug
 npm-debug.log*
 yarn-debug.log*
