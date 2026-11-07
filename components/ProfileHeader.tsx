@@ -8,9 +8,11 @@ import { displayName, initials, type User } from "@/lib/types";
 export default function ProfileHeader({
   user,
   matchPercent,
+  showActions = true,
 }: {
   user: User;
   matchPercent?: number;
+  showActions?: boolean;
 }) {
   return (
     <header className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
@@ -38,12 +40,14 @@ export default function ProfileHeader({
             ))}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button>Add friend</Button>
-            <Button variant="outline" disabled>
-              Message
-            </Button>
-          </div>
+          {showActions && (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button>Add friend</Button>
+              <Button variant="outline" disabled>
+                Message
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </header>

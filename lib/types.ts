@@ -23,6 +23,7 @@ export interface User {
   clubs: string[];
   lookingFor: string[]; // "Study mates", "Friends", "Connections", or custom
   socials: SocialLink[];
+  unavailableSlots?: string[]; // day and 15-minute slot identifiers, e.g. "Sun-36"
 }
 
 export interface SharedClass {
