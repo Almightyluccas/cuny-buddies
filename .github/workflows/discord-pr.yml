@@ -1,0 +1,76 @@
+
+name: Discord PR Notifications
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send PR notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ROLE_ID: "1569548983326605322"
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "Missing DISCORD_WEBHOOK_URL secret"
+            exit 1
+          fi
+
+          payload=$(jq -n \
+            --slurpfile event "$GITHUB_EVENT_PATH" \
+            --arg role "$ROLE_ID" '
+            ($event[0]) as $e |
+            {
+              username: "CUNY Buddies GitHub Bot",
+              content: (
+                "<@&" + $role + "> " +
+                (if $e.action == "ready_for_review"
+                 then "A pull request is ready for review!"
+                 else "A new pull request has been opened!"
+                 end)
+              ),
+              allowed_mentions: {
+                parse: [],
+                roles: [$role]
+              },
+              embeds: [
+                {
+                  title: (
+                    "PR #" + ($e.number | tostring) +
+                    ": " + $e.pull_request.title
+                  ),
+                  url: $e.pull_request.html_url,
+                  description: (
+                    "**Author:** " +
+                    $e.pull_request.user.login +
+                    "\n**From:** " +
+                    $e.pull_request.head.ref +
+                    "\n**Into:** " +
+                    $e.pull_request.base.ref +
+                    "\n**Status:** " +
+                    (if $e.pull_request.draft
+                     then "Draft"
+                     else "Ready for review"
+                     end)
+                  ),
+                  color: 3447003,
+                  footer: {
+                    text: "CUNY Buddies | GitHub"
+                  }
+                }
+              ]
+            }')
+
+          curl --fail-with-body --retry 3 \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK_URL"
