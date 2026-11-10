@@ -1,0 +1,153 @@
+name: Discord GitHub Notifications
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - ready_for_review
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
+          ROLE_ID: "1569548983326605322"
+        run: |
+          set -euo pipefail
+
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "Missing Discord webhook secret"
+            exit 1
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            SHA=$(jq -r '.after' "$GITHUB_EVENT_PATH")
+
+            COMPARE_URL=$(jq -r '.compare' "$GITHUB_EVENT_PATH")
+            COMMIT_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$SHA"
+
+            # Find a PR associated with the new main commit
+            PRS=$(curl --fail-with-body -sS \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$SHA/pulls")
+
+            MERGED_PR=$(echo "$PRS" | jq -c \
+              --arg sha "$SHA" '
+              [.[] | select(
+                .merged_at != null and
+                .base.ref == "main" and
+                .merge_commit_sha == $sha
+              )] | first // empty
+            ')
+
+            if [ -n "$MERGED_PR" ]; then
+              TITLE="Pull Request Merged into Main"
+              PR_URL=$(echo "$MERGED_PR" | jq -r '.html_url')
+              PR_NUMBER=$(echo "$MERGED_PR" | jq -r '.number')
+              PR_TITLE=$(echo "$MERGED_PR" | jq -r '.title')
+              AUTHOR=$(echo "$MERGED_PR" | jq -r '.user.login')
+
+              DESCRIPTION=$(printf \
+                '**PR:** #%s\n**Title:** %s\n**Author:** %s\n\n[View Merged PR](%s)\n[View Code Changes](%s)' \
+                "$PR_NUMBER" "$PR_TITLE" "$AUTHOR" \
+                "$PR_URL" "$COMPARE_URL")
+
+              URL="$PR_URL"
+              COLOR=3066993
+
+            else
+              TITLE="Main Branch Updated"
+
+              PUSHER=$(jq -r '.pusher.name // "Unknown"' \
+                "$GITHUB_EVENT_PATH")
+
+              MESSAGE=$(jq -r \
+                '.head_commit.message // "Changes pushed"' \
+                "$GITHUB_EVENT_PATH")
+
+              DESCRIPTION=$(printf \
+                '**Branch:** main\n**Pushed by:** %s\n**Commit:** %s\n**Message:** %s\n\n[View Changes](%s)\n[View Commit](%s)' \
+                "$PUSHER" "${SHA:0:7}" "$MESSAGE" \
+                "$COMPARE_URL" "$COMMIT_URL")
+
+              URL="$COMPARE_URL"
+              COLOR=15844367
+            fi
+
+          else
+            ACTION=$(jq -r '.action' "$GITHUB_EVENT_PATH")
+
+            case "$ACTION" in
+              opened)
+                TITLE="New Pull Request"
+                ;;
+              synchronize)
+                TITLE="Pull Request Updated"
+                ;;
+              ready_for_review)
+                TITLE="PR Ready for Review"
+                ;;
+            esac
+
+            URL=$(jq -r '.pull_request.html_url' \
+              "$GITHUB_EVENT_PATH")
+
+            DESCRIPTION=$(jq -r '
+              "**PR:** #" + (.number | tostring) +
+              "\n**Title:** " + .pull_request.title +
+              "\n**Author:** " + .pull_request.user.login +
+              "\n**From:** " + .pull_request.head.ref +
+              "\n**Into:** " + .pull_request.base.ref
+            ' "$GITHUB_EVENT_PATH")
+
+            DESCRIPTION=$(printf \
+              '%s\n\n[View Pull Request](%s)\n[Review Code Changes](%s/files)' \
+              "$DESCRIPTION" "$URL" "$URL")
+
+            COLOR=3447003
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg role "$ROLE_ID" \
+            --arg title "$TITLE" \
+            --arg url "$URL" \
+            --arg description "$DESCRIPTION" \
+            --argjson color "$COLOR" '
+            {
+              username: "CUNY Buddies GitHub Bot",
+              content: ("<@&" + $role + "> " + $title),
+              allowed_mentions: {
+                parse: [],
+                roles: [$role]
+              },
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $description[:4000],
+                color: $color,
+                footer: {
+                  text: "CUNY Buddies | GitHub"
+                }
+              }]
+            }')
+
+          curl --fail-with-body --retry 3 \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
