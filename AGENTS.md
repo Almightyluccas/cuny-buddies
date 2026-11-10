@@ -42,18 +42,22 @@ npm run dev        # dev server at http://localhost:3000
 npm run build      # production build
 npm run start      # serve the production build
 npm run lint       # eslint (flat config in eslint.config.mjs)
+npm test           # vitest; DB tests use an in-memory MongoDB
+npm run db:setup   # apply collections, validators, indexes (reads .env.local)
 ```
-
-There is no test setup yet.
 
 ## Architecture
 
 App Router project (`app/`). Currently close to the create-next-app scaffold:
 `layout.tsx` (root layout, Geist fonts), `page.tsx` (home), `globals.css`.
 
-- **Data layer (planned, not built):** `mongodb` and `server-only` are
-  dependencies but nothing connects to a database yet. Keep DB access in
-  server-only modules.
+- **Data layer (`lib/db/`):** MongoDB database `cuny-buddies`. `client.ts`
+  (shared client, Vercel pool cleanup), `schema.ts` (validators, indexes; rerun
+  `db:setup` after changing; changing a validator needs a dbAdmin user), `users.ts` (user queries). Only `lib/db` reads
+  `process.env`; import it from server code only. Pages still read
+  `lib/mock-data.ts` until auth identifies the current user.
+- **Campuses:** `lib/campuses.ts` lists every CUNY campus. Users store a
+  primary `campusId`; matches are scoped to it. Never rename an existing id.
 - **Config:** connection string is `MONGODB_URI` in `.env.local` (gitignored);
   `.env.example` shows the shape.
 - **Styling:** Tailwind CSS v4, configured CSS-first in `app/globals.css`
