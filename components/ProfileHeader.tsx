@@ -1,7 +1,7 @@
 import Avatar from "@/components/Avatar";
 import Button from "@/components/Button";
 import Tag from "@/components/Tag";
-import { getCampus } from "@/lib/campuses";
+import { campusName } from "@/lib/campuses";
 import { displayName, initials, type User } from "@/lib/types";
 
 // Full-width, TikTok-style profile header: avatar left, identity + stats + bio
@@ -28,7 +28,7 @@ export default function ProfileHeader({
             )}
           </div>
           <p className="mt-1 text-muted">
-            {getCampus(user.campusId).name} · {user.majors.join(" & ")} ·{" "}
+            {campusName(user.campusId)} · {user.majors.join(" & ")} ·{" "}
             {user.year}
           </p>
 

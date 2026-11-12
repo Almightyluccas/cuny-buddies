@@ -48,6 +48,11 @@ export function isCampusId(value: unknown): value is CampusId {
   return CAMPUS_IDS.includes(value as CampusId);
 }
 
-export function getCampus(id: CampusId): Campus {
-  return CAMPUSES.find((c) => c.id === id)!;
+export function getCampus(id: string | undefined): Campus | undefined {
+  return CAMPUSES.find((c) => c.id === id);
+}
+
+// Display name; never throws for a missing or unknown campus.
+export function campusName(id: string | undefined): string {
+  return getCampus(id)?.name ?? "Campus not set";
 }
