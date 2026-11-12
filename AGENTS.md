@@ -42,7 +42,9 @@ npm run dev        # dev server at http://localhost:3000
 npm run build      # production build
 npm run start      # serve the production build
 npm run lint       # eslint (flat config in eslint.config.mjs)
+npm run typecheck  # generate route types, then tsc
 npm test           # vitest; DB tests use an in-memory MongoDB
+npm run test:coverage  # same, with coverage in coverage/
 npm run db:setup   # apply collections, validators, indexes (reads .env.local)
 ```
 
@@ -64,6 +66,9 @@ App Router project (`app/`). Currently close to the create-next-app scaffold:
   (`@import "tailwindcss"`, `@theme inline`). There is no `tailwind.config` file;
   Tailwind runs through the Turbopack loader wired in `next.config.ts`.
 - **Imports:** `@/*` maps to the repo root (see `tsconfig.json`).
+- **CI (`.github/workflows/ci.yml`):** lint, typecheck, tests with coverage,
+  and build on every PR and push to `main`. Octocov (`.octocov.yml`) comments
+  coverage on PRs.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
