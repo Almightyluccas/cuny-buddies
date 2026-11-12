@@ -13,10 +13,10 @@ if (!baseUrl || !logFile) {
 // Each page must contain text its own code renders, so a page that returns
 // 200 but fails to render (e.g. a streamed server error) counts as down.
 const PAGES = [
-  { path: "/", expect: "CUNY Buddies" },
+  { path: "/", expect: "3 free" },
   { path: "/matches", expect: "% match" },
   { path: "/me", expect: "Save changes" },
-  { path: "/profile/maya-r", expect: "Maya R." },
+  { path: "/profile/maya-r", expect: "Hobbies" },
 ];
 const TIMEOUT_MS = 10_000;
 
