@@ -1,0 +1,70 @@
+name: Sprint metrics
+
+# Manual run: Actions → Sprint metrics → Run workflow. The report is in the
+# job summary and the `sprint-metrics` artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Sprint start (YYYY-MM-DD, UTC)"
+        required: true
+      until:
+        description: "Sprint end (YYYY-MM-DD, UTC)"
+        required: true
+      milestone:
+        description: "Milestone title for the burndown (optional)"
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  actions: read
+  statuses: read
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+      SINCE: ${{ inputs.since }}
+      UNTIL: ${{ inputs.until }}
+      MILESTONE: ${{ inputs.milestone }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test with coverage
+        run: npm run test:coverage -- --reporter=default --reporter=json --outputFile.json=test-results.json
+
+      - name: Download heartbeat log
+        continue-on-error: true
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=heartbeat-log&per_page=100" \
+            --jq '[.artifacts[] | select(.expired | not)] | sort_by(.created_at) | last | .id // empty')
+          if [ -n "$id" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > hb.zip
+            unzip -o hb.zip heartbeat.jsonl
+          fi
+
+      - name: Report
+        run: |
+          npm run -s metrics -- --since "$SINCE" --until "$UNTIL" \
+            ${MILESTONE:+--milestone "$MILESTONE"} \
+            --coverage coverage/coverage-summary.json \
+            --tests test-results.json \
+            --heartbeat heartbeat.jsonl > sprint-metrics.md
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sprint-metrics
+          path: sprint-metrics.md

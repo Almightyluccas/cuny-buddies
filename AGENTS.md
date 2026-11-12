@@ -60,6 +60,9 @@ App Router project (`app/`). Currently close to the create-next-app scaffold:
   primary `campusId`; matches are scoped to it. Never rename an existing id.
 - **Config:** connection string is `MONGODB_URI` in `.env.local` (gitignored);
   `.env.example` shows the shape.
+- **Sprint metrics:** `npm run metrics` (`scripts/sprint-metrics.mts`, math in
+  `lib/metrics.ts`) builds the sprint report tables from GitHub. Run it from
+  the "Sprint metrics" workflow, or locally with `GITHUB_TOKEN`.
 - **Styling:** Tailwind CSS v4, configured CSS-first in `app/globals.css`
   (`@import "tailwindcss"`, `@theme inline`). There is no `tailwind.config` file;
   Tailwind runs through the Turbopack loader wired in `next.config.ts`.
