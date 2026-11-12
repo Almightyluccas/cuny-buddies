@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "db:setup": "tsx --env-file=.env.local scripts/db-setup.mts",
     "metrics": "tsx scripts/sprint-metrics.mts"
   },
@@ -24,6 +26,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "mongodb-memory-server": "^11.3.0",
