@@ -27,14 +27,8 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install
+      - name: Install # also downloads the in-memory MongoDB binary
         run: npm ci
-
-      - name: Cache in-memory MongoDB binary
-        uses: actions/cache@v5
-        with:
-          path: ${{ runner.temp }}/mongodb-binaries
-          key: mongoms-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Lint
         run: npm run lint
@@ -44,8 +38,6 @@ jobs:
 
       - name: Test with coverage
         run: npm run test:coverage
-        env:
-          MONGOMS_DOWNLOAD_DIR: ${{ runner.temp }}/mongodb-binaries
 
       - name: Build
         run: npm run build
