@@ -38,7 +38,8 @@ export async function listUsersByCampus(
   return (await users().find(filter, { projection }).toArray()).map(toUser);
 }
 
-// Creates or replaces the profile. Changing campusId keeps all other data.
+// Creates or replaces the profile. Call when onboarding completes; the DB
+// rejects incomplete profiles. Changing campusId keeps all other data.
 export async function saveUser({ id, ...profile }: User): Promise<void> {
   const now = new Date();
   await users().updateOne(

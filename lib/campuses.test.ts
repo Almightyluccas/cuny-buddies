@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CAMPUSES, CAMPUS_IDS, getCampus, isCampusId } from "@/lib/campuses";
+import {
+  CAMPUSES,
+  CAMPUS_IDS,
+  campusName,
+  getCampus,
+  isCampusId,
+} from "@/lib/campuses";
 
 describe("campuses", () => {
   it("lists all 26 CUNY campuses with unique ids and names", () => {
@@ -20,5 +26,13 @@ describe("campuses", () => {
       name: "Hunter College",
       borough: "Manhattan",
     });
+    expect(getCampus("nyu")).toBeUndefined();
+    expect(getCampus(undefined)).toBeUndefined();
+  });
+
+  it("names a campus without throwing when it is missing or unknown", () => {
+    expect(campusName("ccny")).toBe("The City College of New York");
+    expect(campusName(undefined)).toBe("Campus not set");
+    expect(campusName("nyu")).toBe("Campus not set");
   });
 });

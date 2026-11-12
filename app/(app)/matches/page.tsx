@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
-import { getCampus } from "@/lib/campuses";
+import { campusName } from "@/lib/campuses";
 import {
   getCurrentUser,
   getMatches,
@@ -18,7 +18,7 @@ export default function MatchesPage() {
     <div className="mx-auto max-w-5xl">
       <h1 className="text-2xl font-bold">Matches</h1>
       <p className="mt-1 text-muted">
-        Students at {getCampus(getCurrentUser().campusId).name} who share your
+        Students at {campusName(getCurrentUser().campusId)} who share your
         classes and your breaks.
       </p>
 
@@ -34,7 +34,7 @@ export default function MatchesPage() {
               <div>
                 <p className="font-semibold">{displayName(user)}</p>
                 <p className="text-sm text-muted">
-                  {getCampus(user.campusId).name} · {user.year}
+                  {campusName(user.campusId)} · {user.year}
                 </p>
               </div>
             </div>

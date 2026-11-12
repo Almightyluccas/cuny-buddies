@@ -11,12 +11,28 @@ export const COLLECTIONS = { users: "users" } as const;
 
 const stringArray = { bsonType: "array", items: { bsonType: "string" } };
 
-// Type-checks fields when present. Only timestamps are required, so a user doc
-// can exist (created at sign-in) before onboarding fills in the profile.
+// A user doc is written only when onboarding completes (sign-in writes
+// nothing), so every profile field, including campusId, is required.
 export const usersValidator = {
   $jsonSchema: {
     bsonType: "object",
-    required: ["createdAt", "updatedAt"],
+    required: [
+      "firstName",
+      "lastName",
+      "showLastInitialOnly",
+      "age",
+      "gender",
+      "showGender",
+      "campusId",
+      "majors",
+      "year",
+      "hobbies",
+      "clubs",
+      "lookingFor",
+      "socials",
+      "createdAt",
+      "updatedAt",
+    ],
     properties: {
       _id: { bsonType: "string" }, // auth provider user id
       firstName: { bsonType: "string" },
