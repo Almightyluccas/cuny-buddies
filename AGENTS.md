@@ -56,6 +56,9 @@ App Router project (`app/`). Currently close to the create-next-app scaffold:
   `db:setup` after changing; changing a validator needs a dbAdmin user), `users.ts` (user queries). Only `lib/db` reads
   `process.env`; import it from server code only. Pages still read
   `lib/mock-data.ts` until auth identifies the current user.
+- **Uptime:** `GET /api/health` pings the DB (200 ok, 503 degraded).
+  `.github/workflows/heartbeat.yml` probes it and key pages every 15 minutes
+  and appends results to the `heartbeat-log` artifact.
 - **Campuses:** `lib/campuses.ts` lists every CUNY campus. Users store a
   primary `campusId`; matches are scoped to it. Never rename an existing id.
 - **Config:** connection string is `MONGODB_URI` in `.env.local` (gitignored);
