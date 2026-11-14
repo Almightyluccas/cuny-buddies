@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
+import OnboardingCalendar from "@/components/OnboardingCalendar";
 import {
   BOROUGHS,
   CAMPUSES,
@@ -36,6 +37,7 @@ type FormState = {
   clubs: string; // comma separated
   lookingFor: string; // comma separated
   socials: string; // one per line: "Label, https://..."
+  unavailableSlots: string[];
 };
 
 const csvToArr = (s: string) =>
@@ -78,6 +80,7 @@ function userToForm(u: User): FormState {
     clubs: arrToCsv(u.clubs),
     lookingFor: arrToCsv(u.lookingFor),
     socials: socialsToText(u.socials),
+    unavailableSlots: u.unavailableSlots ?? [],
   };
 }
 
@@ -97,6 +100,7 @@ function formToUser(f: FormState): User {
     clubs: csvToArr(f.clubs),
     lookingFor: csvToArr(f.lookingFor),
     socials: textToSocials(f.socials),
+    unavailableSlots: f.unavailableSlots,
   };
 }
 
@@ -125,7 +129,18 @@ export default function ProfileEditor() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(formToUser(form)));
+      const currentProfile = localStorage.getItem(STORAGE_KEY);
+      const currentAvailability = currentProfile
+        ? (JSON.parse(currentProfile) as User).unavailableSlots
+        : undefined;
+      const user = formToUser(form);
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          ...user,
+          unavailableSlots: currentAvailability ?? user.unavailableSlots,
+        }),
+      );
       setSaved(true);
     } catch {
       // storage unavailable (e.g. private window); leave UI unchanged
@@ -266,6 +281,7 @@ export default function ProfileEditor() {
           )}
         </div>
       </div>
+      <OnboardingCalendar mode="profile" />
     </form>
   );
 }
