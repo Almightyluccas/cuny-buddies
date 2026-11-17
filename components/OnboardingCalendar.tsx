@@ -9,7 +9,6 @@ import {
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Button from "@/components/Button";
-import { currentUser } from "@/lib/mock-data";
 import type { User } from "@/lib/types";
 
 const STORAGE_KEY = "cuny-buddies:profile";
@@ -101,15 +100,24 @@ export default function OnboardingCalendar({
     };
   }, []);
 
+  useEffect(() => {
+    if (mode === "onboarding" && !localStorage.getItem(STORAGE_KEY)) {
+      router.replace("/welcome");
+    }
+  }, [mode, router]);
+
   function saveSlots(slots: Set<string>) {
-    const rawProfile = localStorage.getItem(STORAGE_KEY);
-    const profile = rawProfile
-      ? (JSON.parse(rawProfile) as User)
-      : currentUser;
+  const rawProfile = localStorage.getItem(STORAGE_KEY);
+  if (!rawProfile) return; // no profile means the user skipped onboarding
+  try {
+    const profile = JSON.parse(rawProfile) as User;
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ ...profile, unavailableSlots: [...slots] }),
     );
+  } catch {
+    // stored data is corrupted, so don't overwrite it with a partial profile
+  }
   }
 
   function setSlot(key: string, selected: boolean) {
