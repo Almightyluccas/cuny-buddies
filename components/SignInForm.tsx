@@ -45,7 +45,7 @@ export default function SignInForm() {
           />
         </label>
 
-        <Button href="/me"type="submit" className="w-full">
+        <Button type="submit" className="w-full">
           Continue
         </Button>
         <Button href="/welcome" variant="outline" className="w-full">
