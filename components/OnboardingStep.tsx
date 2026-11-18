@@ -13,7 +13,9 @@ export type OnboardingStage =
   | "name"
   | "about"
   | "campus"
-  | "interests"
+  | "looking-for"
+  | "hobbies"
+  | "clubs"
   | "socials"
   | "calendar";
 
@@ -38,10 +40,71 @@ const stages: { id: OnboardingStage; title: string }[] = [
   { id: "name", title: "Your name" },
   { id: "about", title: "About you" },
   { id: "campus", title: "Campus life" },
-  { id: "interests", title: "Interests" },
+  { id: "looking-for", title: "What you’re looking for" },
+  { id: "hobbies", title: "Hobbies" },
+  { id: "clubs", title: "Clubs" },
   { id: "socials", title: "Social links" },
   { id: "calendar", title: "Weekly availability" },
 ];
+
+const choiceSteps = {
+  "looking-for": {
+    field: "lookingFor",
+    heading: "What are you looking for?",
+    description: "Choose the kinds of connections you’d like to make at CUNY.",
+    options: [
+      "Friends",
+      "Study mates",
+      "Classmates",
+      "Project partners",
+      "Mentors",
+      "Networking",
+      "Campus activities",
+      "Connections",
+    ],
+  },
+  hobbies: {
+    field: "hobbies",
+    heading: "What do you enjoy?",
+    description: "Pick a few hobbies to help classmates find things in common.",
+    options: [
+      "Basketball",
+      "Photography",
+      "Music",
+      "Gaming",
+      "Reading",
+      "Cooking",
+      "Hiking",
+      "Dancing",
+      "Art & design",
+      "Fitness",
+      "Movies",
+      "Chess",
+      "Travel",
+      "Writing",
+      "Coding",
+    ],
+  },
+  clubs: {
+    field: "clubs",
+    heading: "Which clubs are you interested in?",
+    description: "Select clubs you’re part of or would like to explore.",
+    options: [
+      "ACM",
+      "Women in CS",
+      "Robotics Club",
+      "Debate Society",
+      "Student Government",
+      "Anime Club",
+      "Pre-Law Society",
+      "Dance Team",
+      "Environmental Club",
+      "Business Club",
+      "Photography Club",
+      "Cultural clubs",
+    ],
+  },
+} as const;
 
 function stageHref(stage: OnboardingStage): string {
   return stage === "name" ? "/welcome" : `/welcome/${stage}`;
@@ -178,8 +241,14 @@ export default function OnboardingStep({
   const router = useRouter();
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  const [otherOpen, setOtherOpen] = useState(false);
+  const [otherAnswer, setOtherAnswer] = useState("");
   const stageIndex = stages.findIndex((item) => item.id === stage);
   const user = formToUser(form);
+  const choiceStep =
+    stage === "looking-for" || stage === "hobbies" || stage === "clubs"
+      ? choiceSteps[stage]
+      : null;
 
   useEffect(() => {
     try {
@@ -211,6 +280,41 @@ export default function OnboardingStep({
     } catch {
       setError("We couldn’t save your changes in this browser. Check storage settings and try again.");
     }
+  }
+
+  function toggleChoice(key: "lookingFor" | "hobbies" | "clubs", option: string) {
+    const choices = csvToArray(form[key]);
+    const selected = choices.some(
+      (choice) => choice.toLocaleLowerCase() === option.toLocaleLowerCase(),
+    );
+    update(
+      key,
+      arrayToCsv(
+        selected
+          ? choices.filter(
+              (choice) =>
+                choice.toLocaleLowerCase() !== option.toLocaleLowerCase(),
+            )
+          : [...choices, option],
+      ),
+    );
+  }
+
+  function addOtherChoice() {
+    if (!choiceStep) return;
+    const answer = otherAnswer.trim();
+    if (!answer) return;
+
+    const key = choiceStep.field;
+    const choices = csvToArray(form[key]);
+    if (
+      !choices.some(
+        (choice) => choice.toLocaleLowerCase() === answer.toLocaleLowerCase(),
+      )
+    ) {
+      update(key, arrayToCsv([...choices, answer]));
+    }
+    setOtherAnswer("");
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -406,42 +510,83 @@ export default function OnboardingStep({
                 </div>
               )}
 
-              {stage === "interests" && (
+              {choiceStep && (
                 <div className="flex flex-col gap-5">
                   <div>
-                    <h2 className="text-xl font-bold">Find your people</h2>
+                    <h2 className="text-xl font-bold">{choiceStep.heading}</h2>
                     <p className="mt-1 text-sm text-muted">
-                      Tell classmates what you’re into and what connections you want to make.
+                      {choiceStep.description}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-5">
-                    <Field
-                      label="What are you looking for?"
-                      hint="For example: friends, study mates, connections."
+                  <div
+                    role="group"
+                    aria-label={choiceStep.heading}
+                    className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+                  >
+                    {choiceStep.options.map((option) => {
+                      const selected = csvToArray(form[choiceStep.field]).some(
+                        (choice) =>
+                          choice.toLocaleLowerCase() ===
+                          option.toLocaleLowerCase(),
+                      );
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => toggleChoice(choiceStep.field, option)}
+                          className={`min-h-12 touch-manipulation cursor-pointer select-none rounded-xl border px-3 py-2 text-sm font-medium transition-colors active:scale-[0.98] ${
+                            selected
+                              ? "border-brand bg-brand-soft text-brand-soft-fg"
+                              : "border-border bg-surface hover:bg-bg"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      aria-pressed={otherOpen}
+                      aria-expanded={otherOpen}
+                      onClick={() => setOtherOpen((open) => !open)}
+                      className={`min-h-12 touch-manipulation cursor-pointer select-none rounded-xl border px-3 py-2 text-sm font-semibold transition-colors active:scale-[0.98] ${
+                        otherOpen
+                          ? "border-brand bg-brand-soft text-brand-soft-fg"
+                          : "border-border bg-surface hover:bg-bg"
+                      }`}
                     >
-                      <input
-                        className={inputClass}
-                        value={form.lookingFor}
-                        onChange={(event) => update("lookingFor", event.target.value)}
-                      />
-                    </Field>
-                    <Field label="Hobbies" hint="Separate hobbies with commas.">
-                      <input
-                        placeholder="e.g. Basketball, reading, photography"
-                        className={inputClass}
-                        value={form.hobbies}
-                        onChange={(event) => update("hobbies", event.target.value)}
-                      />
-                    </Field>
-                    <Field label="Clubs" hint="Separate clubs with commas.">
-                      <input
-                        placeholder="e.g. Debate club, ACM"
-                        className={inputClass}
-                        value={form.clubs}
-                        onChange={(event) => update("clubs", event.target.value)}
-                      />
-                    </Field>
+                      Other
+                    </button>
                   </div>
+                  {otherOpen && (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        aria-label="Add your own answer"
+                        placeholder="Type your own answer"
+                        className={inputClass}
+                        value={otherAnswer}
+                        onChange={(event) => setOtherAnswer(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            addOtherChoice();
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        onClick={addOtherChoice}
+                        disabled={!otherAnswer.trim()}
+                        className="shrink-0"
+                      >
+                        Add answer
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted">
+                    Select as many as you like. Your choices save automatically.
+                  </p>
                 </div>
               )}
 

@@ -194,15 +194,15 @@ export default function OnboardingCalendar({
           {mode === "onboarding" ? (
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between text-sm">
-                <span className="font-semibold">Step 6 of 6</span>
+                <span className="font-semibold">Step 8 of 8</span>
                 <span className="text-muted">Weekly availability</span>
               </div>
               <div
                 role="progressbar"
                 aria-label="Profile setup progress"
                 aria-valuemin={1}
-                aria-valuemax={6}
-                aria-valuenow={6}
+                aria-valuemax={8}
+                aria-valuenow={8}
                 className="h-2 overflow-hidden rounded-full bg-brand-soft"
               >
                 <div className="h-full w-full rounded-full bg-brand" />
