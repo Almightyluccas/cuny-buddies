@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
 import OnboardingCalendar from "@/components/OnboardingCalendar";
+import { cunyColleges } from "@/lib/cuny-colleges";
 import {
   displayName,
   type Gender,
@@ -203,11 +204,18 @@ export default function ProfileEditor() {
           />
 
           <Field label="School">
-            <input
+            <select
               className={input}
               value={form.school}
               onChange={(e) => set("school", e.target.value)}
-            />
+            >
+              <option value="">Select your college</option>
+              {cunyColleges.map((college) => (
+                <option key={college} value={college}>
+                  {college}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Year">
             <input

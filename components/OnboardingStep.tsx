@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Button from "@/components/Button";
+import { cunyColleges } from "@/lib/cuny-colleges";
 import type { Gender, SocialLink, User } from "@/lib/types";
 
 const STORAGE_KEY = "cuny-buddies:profile";
@@ -78,7 +79,7 @@ function emptyForm(): FormState {
     showLastInitialOnly: true,
     age: "",
     gender: "female",
-    showGender: false,
+    showGender: true,
     school: "",
     majors: "",
     year: "",
@@ -372,13 +373,18 @@ export default function OnboardingStep({
                   </div>
                   <div className="flex flex-col gap-5">
                     <Field label="CUNY college">
-                      <input
-                        autoComplete="organization"
-                        placeholder="e.g. City College"
+                      <select
                         className={inputClass}
                         value={form.school}
                         onChange={(event) => update("school", event.target.value)}
-                      />
+                      >
+                        <option value="">Select your college</option>
+                        {cunyColleges.map((college) => (
+                          <option key={college} value={college}>
+                            {college}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
                     <Field label="Major(s)" hint="Separate multiple majors with commas.">
                       <input
