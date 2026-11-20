@@ -32,7 +32,9 @@ type FormState = {
   hobbies: string;
   clubs: string;
   lookingFor: string;
-  socials: string;
+  instagram: string;
+  linkedin: string;
+  github: string;
   unavailableSlots: string[];
 };
 
@@ -119,20 +121,28 @@ const csvToArray = (value: string) =>
     .filter(Boolean);
 const arrayToCsv = (items: string[]) => items.join(", ");
 
-function socialsToText(socials: SocialLink[]) {
-  return socials.map(({ label, url }) => `${label}, ${url}`).join("\n");
+function socialsToFields(socials: SocialLink[]) {
+  const getUrl = (label: string) =>
+    socials.find(
+      (social) => social.label.trim().toLowerCase() === label.toLowerCase(),
+    )?.url ?? "";
+
+  return {
+    instagram: getUrl("Instagram"),
+    linkedin: getUrl("LinkedIn"),
+    github: getUrl("GitHub"),
+  };
 }
 
-function textToSocials(value: string): SocialLink[] {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [label, ...urlParts] = line.split(",");
-      return { label: label.trim(), url: urlParts.join(",").trim() };
-    })
-    .filter((social) => social.label && social.url);
+function fieldsToSocials(fields: Pick<FormState, "instagram" | "linkedin" | "github">) {
+  return [
+    { label: "Instagram", url: fields.instagram },
+    { label: "LinkedIn", url: fields.linkedin },
+    { label: "GitHub", url: fields.github },
+  ].flatMap(({ label, url }) => {
+    const trimmedUrl = url.trim();
+    return trimmedUrl ? [{ label, url: trimmedUrl }] : [];
+  });
 }
 
 function emptyForm(): FormState {
@@ -149,7 +159,9 @@ function emptyForm(): FormState {
     hobbies: "",
     clubs: "",
     lookingFor: "Friends, Study mates",
-    socials: "",
+    instagram: "",
+    linkedin: "",
+    github: "",
     unavailableSlots: [],
   };
 }
@@ -168,7 +180,7 @@ function userToForm(user: User): FormState {
     hobbies: arrayToCsv(user.hobbies),
     clubs: arrayToCsv(user.clubs),
     lookingFor: arrayToCsv(user.lookingFor),
-    socials: socialsToText(user.socials),
+    ...socialsToFields(user.socials),
     unavailableSlots: user.unavailableSlots ?? [],
   };
 }
@@ -188,7 +200,7 @@ function formToUser(form: FormState): User {
     hobbies: csvToArray(form.hobbies),
     clubs: csvToArray(form.clubs),
     lookingFor: csvToArray(form.lookingFor),
-    socials: textToSocials(form.socials),
+    socials: fieldsToSocials(form),
     unavailableSlots: form.unavailableSlots,
   };
 }
@@ -598,16 +610,34 @@ export default function OnboardingStep({
                       Add any social profiles you’d like to share. This step is optional.
                     </p>
                   </div>
-                  <Field
-                    label="Social links"
-                    hint="One per line, in the format: Instagram, https://instagram.com/yourname"
-                  >
-                    <textarea
-                      rows={5}
-                      placeholder={"Instagram, https://instagram.com/yourname\nLinkedIn, https://linkedin.com/in/yourname"}
+                  <Field label="Instagram">
+                    <input
+                      type="text"
+                      inputMode="url"
+                      placeholder="https://instagram.com/yourname (optional)"
                       className={inputClass}
-                      value={form.socials}
-                      onChange={(event) => update("socials", event.target.value)}
+                      value={form.instagram}
+                      onChange={(event) => update("instagram", event.target.value)}
+                    />
+                  </Field>
+                  <Field label="LinkedIn">
+                    <input
+                      type="text"
+                      inputMode="url"
+                      placeholder="https://linkedin.com/in/yourname (optional)"
+                      className={inputClass}
+                      value={form.linkedin}
+                      onChange={(event) => update("linkedin", event.target.value)}
+                    />
+                  </Field>
+                  <Field label="GitHub">
+                    <input
+                      type="text"
+                      inputMode="url"
+                      placeholder="https://github.com/yourname (optional)"
+                      className={inputClass}
+                      value={form.github}
+                      onChange={(event) => update("github", event.target.value)}
                     />
                   </Field>
                   <p className="rounded-xl bg-brand-soft p-4 text-sm text-brand-soft-fg">
