@@ -10,7 +10,7 @@ export const currentUser: User = {
   age: 20,
   gender: "male",
   showGender: false,
-  school: "City College",
+  campusId: "ccny",
   majors: ["Computer Science"],
   year: "Junior",
   hobbies: ["Basketball", "Photography", "Chess"],
@@ -31,7 +31,7 @@ export const mockUsers: User[] = [
     age: 20,
     gender: "female",
     showGender: false,
-    school: "City College",
+    campusId: "ccny",
     majors: ["Computer Science"],
     year: "Junior",
     hobbies: ["Basketball", "Photography", "Cooking"],
@@ -47,7 +47,7 @@ export const mockUsers: User[] = [
     age: 21,
     gender: "male",
     showGender: false,
-    school: "City College",
+    campusId: "ccny",
     majors: ["Computer Science", "Math"],
     year: "Senior",
     hobbies: ["Basketball", "Running", "Music"],
@@ -63,7 +63,7 @@ export const mockUsers: User[] = [
     age: 19,
     gender: "female",
     showGender: false,
-    school: "Hunter College",
+    campusId: "hunter",
     majors: ["Data Science"],
     year: "Sophomore",
     hobbies: ["Photography", "Hiking", "Cooking"],
@@ -79,7 +79,7 @@ export const mockUsers: User[] = [
     age: 22,
     gender: "male",
     showGender: false,
-    school: "City College",
+    campusId: "ccny",
     majors: ["Computer Engineering"],
     year: "Senior",
     hobbies: ["Chess", "Music", "Gaming"],
@@ -155,8 +155,9 @@ export const matchDetails: Record<string, MatchDetail> = {
   },
 };
 
+// Matches come from the current user's primary campus.
 export function getMatches(): User[] {
-  return mockUsers;
+  return mockUsers.filter((u) => u.campusId === currentUser.campusId);
 }
 
 export function getUser(id: string): User | undefined {

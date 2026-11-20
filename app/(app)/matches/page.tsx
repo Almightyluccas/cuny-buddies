@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
-import { getMatches, matchPercentById } from "@/lib/mock-data";
+import { getCampus } from "@/lib/campuses";
+import {
+  getCurrentUser,
+  getMatches,
+  matchPercentById,
+} from "@/lib/mock-data";
 import { displayName, initials } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Matches · CUNY Buddies" };
@@ -13,7 +18,8 @@ export default function MatchesPage() {
     <div className="mx-auto max-w-5xl">
       <h1 className="text-2xl font-bold">Matches</h1>
       <p className="mt-1 text-muted">
-        Classmates who share your classes and your breaks.
+        Students at {getCampus(getCurrentUser().campusId).name} who share your
+        classes and your breaks.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -28,7 +34,7 @@ export default function MatchesPage() {
               <div>
                 <p className="font-semibold">{displayName(user)}</p>
                 <p className="text-sm text-muted">
-                  {user.school} · {user.year}
+                  {getCampus(user.campusId).name} · {user.year}
                 </p>
               </div>
             </div>

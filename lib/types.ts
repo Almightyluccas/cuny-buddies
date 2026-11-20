@@ -1,5 +1,6 @@
-// User schema for CUNY Buddies. Mirrors the agreed schema; the MongoDB layer
-// (separate task) will persist this shape.
+// User schema for CUNY Buddies. Mirrors the agreed schema; lib/db persists it.
+
+import type { CampusId } from "@/lib/campuses";
 
 export type Gender = "male" | "female";
 
@@ -16,7 +17,7 @@ export interface User {
   age: number;
   gender: Gender;
   showGender: boolean; // whether to display gender on the profile
-  school: string; // e.g. "City College"
+  campusId: CampusId; // primary campus; matches come from here
   majors: string[];
   year: string; // e.g. "Junior"
   hobbies: string[];

@@ -8,6 +8,12 @@ import Button from "@/components/Button";
 import OnboardingCalendar from "@/components/OnboardingCalendar";
 import { cunyColleges } from "@/lib/cuny-colleges";
 import {
+  BOROUGHS,
+  CAMPUSES,
+  isCampusId,
+  type CampusId,
+} from "@/lib/campuses";
+import {
   displayName,
   type Gender,
   type SocialLink,
@@ -25,7 +31,7 @@ type FormState = {
   age: string;
   gender: Gender;
   showGender: boolean;
-  school: string;
+  campusId: CampusId;
   majors: string; // comma separated
   year: string;
   hobbies: string; // comma separated
@@ -67,7 +73,8 @@ function userToForm(u: User): FormState {
     age: String(u.age),
     gender: u.gender,
     showGender: u.showGender,
-    school: u.school,
+    // Profiles saved before campuses existed have no valid campusId.
+    campusId: isCampusId(u.campusId) ? u.campusId : currentUser.campusId,
     majors: arrToCsv(u.majors),
     year: u.year,
     hobbies: arrToCsv(u.hobbies),
@@ -87,7 +94,7 @@ function formToUser(f: FormState): User {
     age: Number(f.age) || 0,
     gender: f.gender,
     showGender: f.showGender,
-    school: f.school.trim(),
+    campusId: f.campusId,
     majors: csvToArr(f.majors),
     year: f.year.trim(),
     hobbies: csvToArr(f.hobbies),
@@ -203,17 +210,20 @@ export default function ProfileEditor() {
             onChange={(v) => set("showGender", v)}
           />
 
-          <Field label="School">
+          <Field label="Primary campus">
             <select
               className={input}
-              value={form.school}
-              onChange={(e) => set("school", e.target.value)}
+              value={form.campusId}
+              onChange={(e) => set("campusId", e.target.value as CampusId)}
             >
-              <option value="">Select your college</option>
-              {cunyColleges.map((college) => (
-                <option key={college} value={college}>
-                  {college}
-                </option>
+              {BOROUGHS.map((borough) => (
+                <optgroup key={borough} label={borough}>
+                  {CAMPUSES.filter((c) => c.borough === borough).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </Field>
