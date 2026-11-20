@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
 import OnboardingCalendar from "@/components/OnboardingCalendar";
-import { cunyColleges } from "@/lib/cuny-colleges";
+
 import {
   BOROUGHS,
   CAMPUSES,
