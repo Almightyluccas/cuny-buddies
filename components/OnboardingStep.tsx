@@ -4,7 +4,13 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import Button from "@/components/Button";
-import { cunyColleges } from "@/lib/cuny-colleges";
+import {
+  BOROUGHS,
+  CAMPUSES,
+  isCampusId,
+  type CampusId,
+} from "@/lib/campuses";
+import { currentUser } from "@/lib/mock-data";
 import type { Gender, SocialLink, User } from "@/lib/types";
 
 const STORAGE_KEY = "cuny-buddies:profile";
@@ -26,7 +32,7 @@ type FormState = {
   age: string;
   gender: Gender;
   showGender: boolean;
-  school: string;
+  campusId: CampusId | "";
   majors: string;
   year: string;
   hobbies: string;
@@ -153,7 +159,7 @@ function emptyForm(): FormState {
     age: "",
     gender: "female",
     showGender: true,
-    school: "",
+    campusId: "",
     majors: "",
     year: "",
     hobbies: "",
@@ -174,7 +180,7 @@ function userToForm(user: User): FormState {
     age: user.age ? String(user.age) : "",
     gender: user.gender,
     showGender: user.showGender,
-    school: user.school,
+    campusId: isCampusId(user.campusId) ? user.campusId : "",
     majors: arrayToCsv(user.majors),
     year: user.year,
     hobbies: arrayToCsv(user.hobbies),
@@ -194,7 +200,7 @@ function formToUser(form: FormState): User {
     age: Number(form.age) || 0,
     gender: form.gender,
     showGender: form.showGender,
-    school: form.school.trim(),
+    campusId: isCampusId(form.campusId) ? form.campusId : currentUser.campusId,
     majors: csvToArray(form.majors),
     year: form.year.trim(),
     hobbies: csvToArray(form.hobbies),
@@ -333,6 +339,10 @@ export default function OnboardingStep({
     event.preventDefault();
     if (stageIndex < 0) {
       setError("This onboarding page could not be found.");
+      return;
+    }
+    if (stage === "campus" && !isCampusId(form.campusId)) {
+      setError("Select your primary campus to continue.");
       return;
     }
 
@@ -488,17 +498,28 @@ export default function OnboardingStep({
                     </p>
                   </div>
                   <div className="flex flex-col gap-5">
-                    <Field label="CUNY college">
+                    <Field label="Primary campus">
                       <select
                         className={inputClass}
-                        value={form.school}
-                        onChange={(event) => update("school", event.target.value)}
+                        value={form.campusId}
+                        onChange={(event) =>
+                          update(
+                            "campusId",
+                            event.target.value as CampusId | "",
+                          )
+                        }
                       >
-                        <option value="">Select your college</option>
-                        {cunyColleges.map((college) => (
-                          <option key={college} value={college}>
-                            {college}
-                          </option>
+                        <option value="">Select your primary campus</option>
+                        {BOROUGHS.map((borough) => (
+                          <optgroup key={borough} label={borough}>
+                            {CAMPUSES.filter((campus) => campus.borough === borough).map(
+                              (campus) => (
+                                <option key={campus.id} value={campus.id}>
+                                  {campus.name}
+                                </option>
+                              ),
+                            )}
+                          </optgroup>
                         ))}
                       </select>
                     </Field>
