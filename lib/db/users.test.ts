@@ -72,6 +72,21 @@ describe("users", () => {
     );
   });
 
+  it("rejects a profile without a campus at the DB level", async () => {
+    const noCampus = { id: "u1", ...base } as User; // base has no campusId
+    await expect(saveUser(noCampus)).rejects.toThrow(/validation/i);
+    expect(await getUser("u1")).toBeNull();
+  });
+
+  it("rejects a sign-in-only doc with no profile fields", async () => {
+    const now = new Date();
+    await expect(
+      getDb()
+        .collection(COLLECTIONS.users)
+        .insertOne({ _id: "u2" as never, createdAt: now, updatedAt: now }),
+    ).rejects.toThrow(/validation/i);
+  });
+
   it("rejects an unknown campus at the DB level", async () => {
     await expect(
       saveUser({ id: "u1", ...base, campusId: "nyu" as never }),
