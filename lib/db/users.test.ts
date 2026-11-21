@@ -3,7 +3,12 @@ import type { MongoClient } from "mongodb";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
 import { COLLECTIONS, ensureSchema, usersValidator } from "@/lib/db/schema";
-import { getUser, listUsersByCampus, saveUser } from "@/lib/db/users";
+import {
+  getUser,
+  listUsersByCampus,
+  saveUser,
+  upsertUserAccount,
+} from "@/lib/db/users";
 import type { User } from "@/lib/types";
 
 let server: MongoMemoryServer;
@@ -38,15 +43,28 @@ beforeEach(async () => {
   await getDb().collection(COLLECTIONS.users).deleteMany({});
 });
 
+async function createLoginAccount(id: string) {
+  await upsertUserAccount({
+    id,
+    email: `${id}@cuny.test`,
+    firstName: base.firstName,
+    lastName: base.lastName,
+  });
+}
+
 describe("users", () => {
   it("round-trips a profile without DB-only fields", async () => {
     const user: User = { id: "u1", campusId: "ccny", ...base };
+    await createLoginAccount(user.id);
     await saveUser(user);
     expect(await getUser("u1")).toEqual(user);
     expect(await getUser("missing")).toBeNull();
   });
 
   it("lists students on a campus, excluding the viewer", async () => {
+    await createLoginAccount("a");
+    await createLoginAccount("b");
+    await createLoginAccount("c");
     await saveUser({ id: "a", campusId: "ccny", ...base });
     await saveUser({ id: "b", campusId: "ccny", ...base });
     await saveUser({ id: "c", campusId: "hunter", ...base });
@@ -57,6 +75,7 @@ describe("users", () => {
   });
 
   it("keeps profile data and createdAt when the campus changes", async () => {
+    await createLoginAccount("u1");
     await saveUser({ id: "u1", campusId: "ccny", ...base });
     const col = getDb().collection(COLLECTIONS.users);
     const before = await col.findOne({ _id: "u1" as never });
@@ -74,6 +93,7 @@ describe("users", () => {
 
   it("rejects a profile without a campus at the DB level", async () => {
     const noCampus = { id: "u1", ...base } as User; // base has no campusId
+    await createLoginAccount("u1");
     await expect(saveUser(noCampus)).rejects.toThrow(/validation/i);
     expect(await getUser("u1")).toBeNull();
   });
@@ -88,6 +108,7 @@ describe("users", () => {
   });
 
   it("rejects an unknown campus at the DB level", async () => {
+    await createLoginAccount("u1");
     await expect(
       saveUser({ id: "u1", ...base, campusId: "nyu" as never }),
     ).rejects.toThrow(/validation/i);

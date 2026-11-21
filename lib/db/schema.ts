@@ -11,32 +11,26 @@ export const COLLECTIONS = { users: "users" } as const;
 
 const stringArray = { bsonType: "array", items: { bsonType: "string" } };
 
-// A user doc is written only when onboarding completes (sign-in writes
-// nothing), so every profile field, including campusId, is required.
+// One document starts with the WorkOS login identity. Profile fields are added
+// to that same document when the user completes onboarding.
 export const usersValidator = {
   $jsonSchema: {
     bsonType: "object",
     required: [
+      "_id",
+      "email",
       "firstName",
       "lastName",
-      "showLastInitialOnly",
-      "age",
-      "gender",
-      "showGender",
-      "campusId",
-      "majors",
-      "year",
-      "hobbies",
-      "clubs",
-      "lookingFor",
-      "socials",
+      "onboardingCompleted",
       "createdAt",
       "updatedAt",
     ],
     properties: {
-      _id: { bsonType: "string" }, // auth provider user id
-      firstName: { bsonType: "string" },
-      lastName: { bsonType: "string" },
+      _id: { bsonType: "string" }, // WorkOS user id; stable link for this account
+      email: { bsonType: "string", minLength: 1 },
+      onboardingCompleted: { bsonType: "bool" },
+      firstName: { bsonType: "string", minLength: 1 },
+      lastName: { bsonType: "string", minLength: 1 },
       showLastInitialOnly: { bsonType: "bool" },
       age: { bsonType: "number", minimum: 0 },
       gender: { enum: ["male", "female"] },
@@ -61,6 +55,27 @@ export const usersValidator = {
       createdAt: { bsonType: "date" },
       updatedAt: { bsonType: "date" },
     },
+    oneOf: [
+      {
+        properties: { onboardingCompleted: { enum: [false] } },
+      },
+      {
+        required: [
+          "showLastInitialOnly",
+          "age",
+          "gender",
+          "showGender",
+          "campusId",
+          "majors",
+          "year",
+          "hobbies",
+          "clubs",
+          "lookingFor",
+          "socials",
+        ],
+        properties: { onboardingCompleted: { enum: [true] } },
+      },
+    ],
   },
 };
 
