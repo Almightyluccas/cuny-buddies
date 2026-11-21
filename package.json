@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "db:setup": "tsx --env-file=.env.local scripts/db-setup.mts"
+    "db:setup": "tsx --env-file=.env.local scripts/db-setup.mts",
+    "metrics": "tsx scripts/sprint-metrics.mts"
   },
   "dependencies": {
     "@vercel/functions": "^3.11.1",
