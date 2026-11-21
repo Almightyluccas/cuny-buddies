@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   burndown,
@@ -26,10 +28,19 @@ describe("stats", () => {
   });
 });
 
+// Real Octocov comments from #17 (compared with main) and #14 (no main report yet).
+const fixture = (name: string) => readFileSync(join(__dirname, "fixtures", name), "utf8");
+
 describe("octocovCoverage", () => {
-  it("reads the coverage cell from an Octocov comment", () => {
-    const body = "## Code Metrics Report\n| Coverage | Test Execution Time |\n|---:|---:|\n| 20.8%    | 1s |";
-    expect(octocovCoverage(body)).toBe(20.8);
+  it("reads the PR's coverage, not main's, when compared with main", () => {
+    expect(octocovCoverage(fixture("octocov-diff.md"))).toBe(21.3); // main is 20.8%
+  });
+
+  it("reads the only coverage cell when there is no main report", () => {
+    expect(octocovCoverage(fixture("octocov-first.md"))).toBe(20.8);
+  });
+
+  it("returns null without a coverage table", () => {
     expect(octocovCoverage("no table")).toBeNull();
   });
 });

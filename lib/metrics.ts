@@ -37,10 +37,20 @@ export function percent(part: number, whole: number): string {
   return whole ? `${((100 * part) / whole).toFixed(1)}%` : "n/a";
 }
 
-// Coverage % from an Octocov PR comment ("| 20.8% | 1s |").
+// The PR's coverage % from an Octocov comment. With a main report to compare,
+// the row is "| **Coverage** | main | [PR](link) | +/- |"; without one, the
+// value is the first cell of the row under the "| Coverage |" header.
 export function octocovCoverage(body: string): number | null {
-  const match = body.match(/\|\s*([\d.]+)%\s*\|/);
-  return match ? Number(match[1]) : null;
+  const lines = body.split("\n");
+  const cells = (line = "") => line.split("|").slice(1, -1).map((c) => c.trim());
+  const pct = (cell = "") => {
+    const m = cell.match(/^\[?([\d.]+)%/);
+    return m ? Number(m[1]) : null;
+  };
+  const row = lines.find((l) => /^\|\s*\*\*Coverage\*\*\s*\|/.test(l));
+  if (row) return pct(cells(row)[2]);
+  const header = lines.findIndex((l) => /^\|\s*Coverage\s*\|/.test(l));
+  return header < 0 ? null : pct(cells(lines[header + 2])[0]);
 }
 
 export interface CommitStatus {
