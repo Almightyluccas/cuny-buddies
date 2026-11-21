@@ -48,7 +48,7 @@ export default function SignInForm() {
         <Button type="submit" className="w-full">
           Continue
         </Button>
-        <Button href="/me" variant="outline" className="w-full">
+        <Button href="/welcome" variant="outline" className="w-full">
           Create an account
         </Button>
       </form>
