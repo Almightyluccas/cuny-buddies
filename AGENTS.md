@@ -37,6 +37,7 @@ inform the page layouts.
 ## Commands
 
 ```bash
+npm install -g npm@11.19.1  # expected npm (package.json packageManager); older npm rewrites the lockfile
 npm install        # required once; node_modules is gitignored
 npm run dev        # dev server at http://localhost:3000
 npm run build      # production build
