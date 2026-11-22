@@ -25,14 +25,15 @@ const TIMES = Array.from({ length: (DAY_END - DAY_START) / 15 + 1 }, (_, i) => D
 type Step = "choose" | "review";
 type Draft = { days: Day[]; start: number; end: number };
 
-export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
+// Every change saves immediately. `onFinish` adds a button to move on (onboarding).
+export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
   const [schedule, setSchedule] = useState<Schedule>(() => emptySchedule());
   const [step, setStep] = useState<Step>("choose");
   const [week, setWeek] = useState(""); // set after mount: dates can't be prerendered
   const [device, setDevice] = useState<DeviceType>("desktop");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "failed">("idle");
   const [draft, setDraft] = useState<Draft | null>(null); // free time being added from a tap
 
   // Browser-only state (storage, user agent) loads after mount to match SSR.
@@ -47,9 +48,11 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
     }
   }, []);
 
-  function update(next: Schedule) {
+  // `save: false` only for the empty starting state of manual entry, so
+  // choosing it doesn't wipe a saved schedule before anything is added.
+  function update(next: Schedule, save = true) {
     setSchedule(next);
-    setSaved(false);
+    if (save) setSaveState(saveSchedule(next) ? "saved" : "failed");
   }
 
   async function handleFile(file: File) {
@@ -84,14 +87,6 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
     }
   }
 
-  function handleSave() {
-    if (!saveSchedule(schedule)) {
-      setError("We couldn't save your schedule in this browser. Check storage settings and try again.");
-      return;
-    }
-    setSaved(true);
-    onSaved?.();
-  }
 
   if (step === "choose") {
     return (
@@ -140,7 +135,7 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
             variant="outline"
             className="mt-4"
             onClick={() => {
-              update(emptySchedule("manual"));
+              update(emptySchedule("manual"), false);
               setStep("review");
             }}
           >
@@ -157,7 +152,7 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
     <div className="space-y-5">
       {schedule.warnings.length > 0 && (
         <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Check these before saving:</p>
+          <p className="font-semibold">Check these:</p>
           <ul className="mt-1 list-disc pl-5">
             {schedule.warnings.map((w) => <li key={w}>{w}</li>)}
           </ul>
@@ -239,8 +234,19 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
           Import a different schedule
         </Button>
         <div className="flex items-center gap-3">
-          {saved && <span className="text-sm font-medium text-brand">Saved.</span>}
-          <Button type="button" onClick={handleSave}>Save schedule</Button>
+          <span aria-live="polite" className="text-sm font-medium">
+            {saveState === "saved" && <span className="text-brand">All changes saved</span>}
+            {saveState === "failed" && (
+              <span role="alert" className="text-red-700">
+                Couldn&apos;t save in this browser. Check storage settings.
+              </span>
+            )}
+          </span>
+          {onFinish && (
+            <Button type="button" onClick={onFinish}>
+              Finish
+            </Button>
+          )}
         </div>
       </div>
     </div>

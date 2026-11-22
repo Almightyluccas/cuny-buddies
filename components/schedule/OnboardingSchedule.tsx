@@ -54,7 +54,7 @@ export default function OnboardingSchedule() {
               <div className="h-full w-full rounded-full bg-brand" />
             </div>
           </div>
-          <ScheduleSetup onSaved={() => router.push("/me")} />
+          <ScheduleSetup onFinish={() => router.push("/me")} />
         </section>
       </div>
     </main>
