@@ -187,6 +187,22 @@ describe("partial or unusual prints", () => {
     ]);
   });
 
+  it("shifts the year back only for Winter terms that cross New Year", () => {
+    const fall = parseScheduleBuilder(["CSC 10300 2026 Fall Term: Aug 28 - Jan 5", "Mon : 9:00 AM to 10:15 AM"], TODAY);
+    expect(fall.schedule.term).toMatchObject({ startDate: "2026-08-28", endDate: "2027-01-05" });
+    const winter = parseScheduleBuilder(["ENG 21000 2027 Winter Term: Dec 28 - Jan 22", "Mon : 9:00 AM to 10:15 AM"], TODAY);
+    expect(winter.schedule.term).toMatchObject({ startDate: "2026-12-28", endDate: "2027-01-22" });
+  });
+
+  it("ignores a date range inside a title or note", () => {
+    const { schedule } = parseScheduleBuilder([
+      "CSC 10300 2026 Fall Term: Aug 28 - Dec 21",
+      "Seminar Mar 2 - Apr 9 Topics",
+      "Mon : 9:00 AM to 10:15 AM",
+    ], TODAY);
+    expect(schedule.courses[0]).toMatchObject({ startDate: "2026-08-28", endDate: "2026-12-21" });
+  });
+
   it("keeps instructors whose surname is also a college name", () => {
     const { schedule } = parseScheduleBuilder([
       "CSC 10300 2026 Fall Term: Aug 28 - Dec 21",

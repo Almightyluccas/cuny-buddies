@@ -24,7 +24,9 @@ const MEETING_ONE = new RegExp(MEETING_SRC, "i");
 const MONTH = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
 const RANGE = `(${MONTH})\\s*(\\d{1,2})\\s*-\\s*(${MONTH})\\s*(\\d{1,2})`;
 const TERM = new RegExp(`(\\d{4})\\s+(Fall|Spring|Summer|Winter)(?:\\s+Term)?\\s*:\\s*${RANGE}`, "i");
-const DATE_RANGE = new RegExp(RANGE, "i");
+// A class's own dates sit alone on a line, so a range inside a title or note
+// ("Seminar Mar 2 - Apr 9 Topics") isn't taken for them.
+const DATE_RANGE = new RegExp(`^${RANGE}$`, "i");
 const CODE = /^([A-Z]{2,5})\s?(\d{3,5}[A-Z]?)\b/;
 const COMPONENT =
   /\b(LEC|LAB|REC|SEM|DIS|STU|IND|CLN|FLD|PRA|RSC|SUP|TUT|ACT|WKS|LCL|HYB|ONL)\s+([A-Z0-9]{1,6})\b(?:\s+([A-Z][a-z]+(?: [A-Z][a-z]+)?))?/;
@@ -341,10 +343,11 @@ type DateRange = { startDate: string; endDate: string };
 function parseTerm(text: string) {
   const m = text.match(TERM);
   if (!m) return undefined;
-  // A term that crosses New Year is named for its January year
-  // ("2027 Winter Term: Dec 28 - Jan 22" starts in December 2026).
+  // A Winter term that crosses New Year is named for its January year
+  // ("2027 Winter Term: Dec 28 - Jan 22" starts in December 2026). Other
+  // seasons are named for their start year; their end just rolls forward.
   let range = dateRange(Number(m[1]), m[3], m[4], m[5], m[6]);
-  if (range && range.endDate.slice(0, 4) > range.startDate.slice(0, 4)) {
+  if (range && /winter/i.test(m[2]) && range.endDate.slice(0, 4) > range.startDate.slice(0, 4)) {
     range = dateRange(Number(m[1]) - 1, m[3], m[4], m[5], m[6]);
   }
   if (!range) return undefined;

@@ -167,7 +167,7 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
             ) : (
               <li>Scroll to the bottom of your schedule and click <b>Print</b>.</li>
             )}
-            <li>Choose <b>Save as PDF</b>, then upload it here. The file is read on your device and never uploaded; only your schedule details are saved.</li>
+            <li>Choose <b>Save as PDF</b>, then upload it here. The file is read on your device and never uploaded. We keep your classes and the text read from it, not the file.</li>
           </ol>
           <label className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover has-[:disabled]:cursor-wait has-[:disabled]:opacity-60">
             {busy ? "Reading your schedule…" : "Upload schedule PDF"}

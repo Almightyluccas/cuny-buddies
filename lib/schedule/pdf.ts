@@ -13,7 +13,8 @@ type Doc = { loadingTask: { destroy(): Promise<void> } };
 export async function readPdfLines(file: File): Promise<string[]> {
   if (file.size > MAX_PDF_BYTES) throw new ScheduleFileError("That file is over 5 MB. Print just your schedule and try again.");
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") {
+  // The spec allows a short preamble before the header, so look in the first 1 KB.
+  if (!new TextDecoder("latin1").decode(bytes.slice(0, 1024)).includes("%PDF-")) {
     throw new ScheduleFileError("That isn't a PDF. Save your Schedule Builder print as a PDF and try again.");
   }
 
