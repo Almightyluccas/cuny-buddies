@@ -10,10 +10,11 @@ import {
   localToday,
   visibleHours,
   weekDates,
+  wideDays,
   type ClassBlock,
   type FreeBlock,
 } from "@/lib/schedule/free-time";
-import type { Block, Schedule } from "@/lib/schedule/model";
+import type { Block, Day, Schedule } from "@/lib/schedule/model";
 
 const HOUR_PX = 48;
 const MIN_PX = HOUR_PX / 60;
@@ -32,6 +33,7 @@ export default function WeekCalendar({
   week,
   onWeekChange,
   onToggleFree,
+  onTapEmpty,
 }: {
   schedule: Schedule;
   week: string; // any date in the week to show
@@ -39,12 +41,19 @@ export default function WeekCalendar({
   // When set, free blocks are clickable: computed ones toggle removed,
   // added ones are deleted.
   onToggleFree?: (block: FreeBlock | (Block & { removed: true })) => void;
+  // When set, tapping empty space reports the date and minute tapped.
+  onTapEmpty?: (date: string, minute: number) => void;
 }) {
   const dates = weekDates(week);
   const { from, to } = visibleHours(schedule);
   const hours = Array.from({ length: to - from }, (_, i) => from + i);
   const today = localToday();
   const top = (minutes: number) => (minutes - from * 60) * MIN_PX;
+  const wide = wideDays(schedule);
+  const columns = [
+    "3.5rem",
+    ...dates.map((d) => (wide.has(dayOf(d)) ? "minmax(6rem,1fr)" : "3rem")),
+  ].join(" ");
 
   return (
     <div>
@@ -61,17 +70,21 @@ export default function WeekCalendar({
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <div className="grid min-w-[720px] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
+        <div className="grid" style={{ gridTemplateColumns: columns }}>
           <div className="sticky left-0 z-20 border-b border-border bg-surface" />
           {dates.map((date) => (
             <div
               key={date}
-              className={`border-b border-l border-border px-1 py-2 text-center text-xs ${
-                date === today ? "bg-brand-soft font-semibold text-brand-soft-fg" : "bg-surface"
-              }`}
+              className={`border-b border-l border-border px-0.5 py-2 text-center ${
+                wide.has(dayOf(date)) ? "text-xs" : "text-[10px]"
+              } ${date === today ? "bg-brand-soft font-semibold text-brand-soft-fg" : "bg-surface"}`}
             >
               <div className="font-semibold">{dayOf(date)}</div>
-              <div className="text-muted">{dateLabel(date, { month: "short", day: "numeric" })}</div>
+              <div className="text-muted">
+                {wide.has(dayOf(date))
+                  ? dateLabel(date, { month: "short", day: "numeric" })
+                  : dateLabel(date, { month: "numeric", day: "numeric" })}
+              </div>
             </div>
           ))}
 
@@ -90,12 +103,14 @@ export default function WeekCalendar({
           {dates.map((date) => (
             <DayColumn
               key={date}
+              day={dayOf(date)}
               classes={classesOn(schedule, date)}
               free={freeOn(schedule, date)}
               removed={removedOn(schedule, date)}
               hours={hours}
               top={top}
               onToggleFree={onToggleFree}
+              onTap={onTapEmpty && ((offsetY) => onTapEmpty(date, from * 60 + offsetY / MIN_PX))}
             />
           ))}
         </div>
@@ -113,23 +128,35 @@ function removedOn(schedule: Schedule, date: string): Block[] {
 }
 
 function DayColumn({
+  day,
   classes,
   free,
   removed,
   hours,
   top,
   onToggleFree,
+  onTap,
 }: {
+  day: Day;
   classes: ClassBlock[];
   free: FreeBlock[];
   removed: Block[];
   hours: number[];
   top: (minutes: number) => number;
   onToggleFree?: (block: FreeBlock | (Block & { removed: true })) => void;
+  onTap?: (offsetY: number) => void;
 }) {
   const lanes = assignLanes(classes);
   return (
-    <div className="relative border-l border-border" style={{ height: hours.length * HOUR_PX }}>
+    <div
+      className={`relative border-l border-border ${onTap ? "cursor-pointer" : ""}`}
+      style={{ height: hours.length * HOUR_PX }}
+      aria-label={onTap ? `${day}: tap empty space to add free time` : undefined}
+      onClick={(e) => {
+        if (!onTap || (e.target as HTMLElement).closest("button,[data-block]")) return;
+        onTap(e.clientY - e.currentTarget.getBoundingClientRect().top);
+      }}
+    >
       {hours.map((h, i) => (
         <div key={h} aria-hidden>
           {i > 0 && <div className="absolute inset-x-0 h-px bg-border" style={{ top: i * HOUR_PX }} />}
@@ -171,6 +198,7 @@ function DayColumn({
         return (
           <div
             key={`${c.course.code}-${c.start}-${i}`}
+            data-block
             className="absolute overflow-hidden rounded-md border-l-4 border-brand bg-brand-soft px-1 py-0.5 text-[10px] leading-tight text-brand-soft-fg"
             style={{
               top: top(c.start),

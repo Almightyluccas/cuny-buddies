@@ -4,8 +4,17 @@ import { useEffect, useState } from "react";
 import Button from "@/components/Button";
 import WeekCalendar from "@/components/schedule/WeekCalendar";
 import { detectDevice, type DeviceType } from "@/lib/schedule/device";
-import { formatTime, initialWeek, localToday, type FreeBlock } from "@/lib/schedule/free-time";
-import { DAY_END, DAY_START, DAYS, MIN_FREE_MINUTES, emptySchedule, type Block, type Day, type Schedule } from "@/lib/schedule/model";
+import {
+  addFree,
+  dayOf,
+  formatTime,
+  initialWeek,
+  localToday,
+  suggestRange,
+  WEEK,
+  type FreeBlock,
+} from "@/lib/schedule/free-time";
+import { DAY_END, DAY_START, MIN_FREE_MINUTES, emptySchedule, type Block, type Day, type Schedule } from "@/lib/schedule/model";
 import { parseScheduleBuilder } from "@/lib/schedule/parse";
 import { ScheduleFileError, readPdfLines } from "@/lib/schedule/pdf";
 import { loadSchedule, saveSchedule } from "@/lib/schedule/storage";
@@ -14,6 +23,7 @@ const SCHEDULE_BUILDER = "https://sb.cunyfirst.cuny.edu/criteria";
 const TIMES = Array.from({ length: (DAY_END - DAY_START) / 15 + 1 }, (_, i) => DAY_START + i * 15);
 
 type Step = "choose" | "review";
+type Draft = { days: Day[]; start: number; end: number };
 
 export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
   const [schedule, setSchedule] = useState<Schedule>(() => emptySchedule());
@@ -23,6 +33,7 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null); // free time being added from a tap
 
   // Browser-only state (storage, user agent) loads after mount to match SSR.
   useEffect(() => {
@@ -155,13 +166,39 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
 
       <p className="text-sm text-muted">
         {schedule.courses.length
-          ? `Free time is any gap of ${MIN_FREE_MINUTES}+ minutes between your classes. Tap a free block to remove it, and add any other times you're free.`
-          : "Add the weekly times you're free. Tap a block to remove it."}
+          ? `Free time is any gap of ${MIN_FREE_MINUTES}+ minutes between your classes. Tap a free block to remove it, or tap an empty spot to add free time.`
+          : "Tap an empty spot on the calendar, or use the form below, to add the weekly times you're free. Tap a block to remove it."}
       </p>
 
-      {week && <WeekCalendar schedule={schedule} week={week} onWeekChange={setWeek} onToggleFree={toggleFree} />}
+      {week && (
+        <WeekCalendar
+          schedule={schedule}
+          week={week}
+          onWeekChange={setWeek}
+          onToggleFree={toggleFree}
+          onTapEmpty={(date, minute) => setDraft({ days: [dayOf(date)], ...suggestRange(schedule, date, minute) })}
+        />
+      )}
 
-      <AddFreeTime onAdd={(b) => update({ ...schedule, addedFree: [...schedule.addedFree, b] })} />
+      <section className="rounded-xl border border-border p-3">
+        <h3 className="mb-2 text-sm font-semibold">Add free time (every week)</h3>
+        <FreeTimeForm
+          initial={{ days: [], start: 12 * 60, end: 13 * 60 }}
+          submitLabel="Add"
+          onSubmit={(d) => update(addFree(schedule, d.days, d.start, d.end))}
+        />
+      </section>
+
+      {draft && (
+        <FreeTimeDialog
+          initial={draft}
+          onCancel={() => setDraft(null)}
+          onSubmit={(d) => {
+            update(addFree(schedule, d.days, d.start, d.end));
+            setDraft(null);
+          }}
+        />
+      )}
 
       {schedule.courses.length > 0 && (
         <section>
@@ -210,38 +247,105 @@ export default function ScheduleSetup({ onSaved }: { onSaved?: () => void }) {
   );
 }
 
-function AddFreeTime({ onAdd }: { onAdd: (block: Block) => void }) {
-  const [day, setDay] = useState<Day>("Mon");
-  const [start, setStart] = useState(12 * 60);
-  const [end, setEnd] = useState(13 * 60);
-  const valid = end - start >= MIN_FREE_MINUTES;
+function FreeTimeForm({
+  initial,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  initial: Draft;
+  submitLabel: string;
+  onSubmit: (draft: Draft) => void;
+  onCancel?: () => void;
+}) {
+  const [days, setDays] = useState<Day[]>(initial.days);
+  const [start, setStart] = useState(initial.start);
+  const [end, setEnd] = useState(initial.end);
+  const tooShort = end - start < MIN_FREE_MINUTES;
   const select = "rounded-lg border border-border bg-surface px-2 py-2 text-sm";
+  const toggle = (day: Day) => setDays((d) => (d.includes(day) ? d.filter((x) => x !== day) : [...d, day]));
 
   return (
-    <fieldset className="flex flex-wrap items-end gap-2 rounded-xl border border-border p-3">
-      <legend className="px-1 text-sm font-semibold">Add free time (every week)</legend>
-      <label className="flex flex-col text-xs text-muted">
-        Day
-        <select className={select} value={day} onChange={(e) => setDay(e.target.value as Day)}>
-          {DAYS.map((d) => <option key={d}>{d}</option>)}
-        </select>
-      </label>
-      <label className="flex flex-col text-xs text-muted">
-        From
-        <select className={select} value={start} onChange={(e) => setStart(Number(e.target.value))}>
-          {TIMES.slice(0, -2).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
-        </select>
-      </label>
-      <label className="flex flex-col text-xs text-muted">
-        To
-        <select className={select} value={end} onChange={(e) => setEnd(Number(e.target.value))}>
-          {TIMES.slice(2).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
-        </select>
-      </label>
-      <Button type="button" variant="outline" disabled={!valid} onClick={() => onAdd({ day, start, end })}>
-        Add
-      </Button>
-      {!valid && <p className="w-full text-xs text-red-700">Free time is at least {MIN_FREE_MINUTES} minutes.</p>}
-    </fieldset>
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (days.length && !tooShort) onSubmit({ days: WEEK.filter((d) => days.includes(d)), start, end });
+      }}
+    >
+      <div role="group" aria-label="Days" className="flex flex-wrap gap-1.5">
+        {WEEK.map((day) => (
+          <button
+            key={day}
+            type="button"
+            aria-pressed={days.includes(day)}
+            onClick={() => toggle(day)}
+            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+              days.includes(day) ? "border-brand bg-brand text-white" : "border-border bg-surface hover:bg-bg"
+            }`}
+          >
+            {day}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col text-xs text-muted">
+          From
+          <select className={select} value={start} onChange={(e) => setStart(Number(e.target.value))}>
+            {TIMES.slice(0, -2).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col text-xs text-muted">
+          To
+          <select className={select} value={end} onChange={(e) => setEnd(Number(e.target.value))}>
+            {TIMES.slice(2).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
+          </select>
+        </label>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <Button type="submit" variant={onCancel ? "primary" : "outline"} disabled={!days.length || tooShort}>
+          {submitLabel}
+        </Button>
+      </div>
+      {tooShort && <p className="text-xs text-red-700">Free time is at least {MIN_FREE_MINUTES} minutes.</p>}
+      {!days.length && <p className="text-xs text-muted">Choose one or more days.</p>}
+    </form>
+  );
+}
+
+function FreeTimeDialog({
+  initial,
+  onSubmit,
+  onCancel,
+}: {
+  initial: Draft;
+  onSubmit: (draft: Draft) => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center"
+      onClick={(e) => e.target === e.currentTarget && onCancel()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="free-time-title"
+        className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-xl"
+      >
+        <h3 id="free-time-title" className="mb-1 text-lg font-bold">Add free time</h3>
+        <p className="mb-4 text-sm text-muted">Repeats every week on the days you choose.</p>
+        <FreeTimeForm initial={initial} submitLabel="Add free time" onSubmit={onSubmit} onCancel={onCancel} />
+      </div>
+    </div>
   );
 }

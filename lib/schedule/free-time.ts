@@ -31,14 +31,44 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Monday of the week containing `date`.
+// Weeks run Sunday to Saturday, as in Schedule Builder.
+export const WEEK: Day[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export function weekStart(date: string): string {
-  return addDays(date, -DAYS.indexOf(dayOf(date)));
+  return addDays(date, -toUtc(date).getUTCDay());
 }
 
 export function weekDates(date: string): string[] {
-  const monday = weekStart(date);
-  return DAYS.map((_, i) => addDays(monday, i));
+  const sunday = weekStart(date);
+  return WEEK.map((_, i) => addDays(sunday, i));
+}
+
+// Weekdays always get a full column; a weekend day only when the student has
+// a class or added free time on it.
+export function wideDays(schedule: Schedule): Set<Day> {
+  const days = new Set<Day>(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+  for (const c of schedule.courses) for (const m of c.meetings) m.days.forEach((d) => days.add(d));
+  for (const b of schedule.addedFree) days.add(b.day);
+  return days;
+}
+
+// A starting range for free time tapped at `minute` on `date`: from that
+// quarter hour for an hour, cut short by the next class, never under 30 min.
+export function suggestRange(schedule: Schedule, date: string, minute: number): { start: number; end: number } {
+  let start = Math.max(DAY_START, Math.min(Math.floor(minute / 15) * 15, DAY_END - MIN_FREE_MINUTES));
+  const next = classesOn(schedule, date).find((c) => c.start > start)?.start ?? DAY_END;
+  const end = Math.max(Math.min(start + 60, next, DAY_END), start + MIN_FREE_MINUTES);
+  if (end > DAY_END) start = DAY_END - MIN_FREE_MINUTES;
+  return { start, end: Math.min(end, DAY_END) };
+}
+
+// Adds the same block on each day, skipping exact duplicates.
+export function addFree(schedule: Schedule, days: Day[], start: number, end: number): Schedule {
+  const added = [...schedule.addedFree];
+  for (const day of days) {
+    if (!added.some((b) => b.day === day && b.start === start && b.end === end)) added.push({ day, start, end });
+  }
+  return { ...schedule, addedFree: added };
 }
 
 export function classesOn(schedule: Schedule, date: string): ClassBlock[] {

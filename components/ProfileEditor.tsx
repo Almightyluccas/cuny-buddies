@@ -12,6 +12,7 @@ import {
   isCampusId,
   type CampusId,
 } from "@/lib/campuses";
+import { ACADEMIC_YEARS, isAcademicYear } from "@/lib/years";
 import {
   displayName,
   type Gender,
@@ -214,11 +215,17 @@ export default function ProfileEditor() {
             </select>
           </Field>
           <Field label="Year">
-            <input
+            <select
               className={input}
               value={form.year}
               onChange={(e) => set("year", e.target.value)}
-            />
+            >
+              {/* Keep a value saved before this list existed selectable. */}
+              {!isAcademicYear(form.year) && <option value={form.year}>{form.year || "Select your year"}</option>}
+              {ACADEMIC_YEARS.map((year) => (
+                <option key={year}>{year}</option>
+              ))}
+            </select>
           </Field>
 
           <Field label="Majors (comma separated)">
