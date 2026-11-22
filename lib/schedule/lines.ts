@@ -9,21 +9,30 @@ export interface TextItem {
   height: number;
 }
 
-const SAME_LINE = 2; // points of vertical drift within one printed line
+// Vertical drift allowed within one printed line. Prints put separate lines as
+// little as 2.3 points apart (a section line next to a meeting line), so this
+// can't be larger.
+const SAME_LINE = 2;
 
 export function itemsToLines(pages: TextItem[][]): string[] {
   const lines: string[] = [];
   for (const items of pages) {
-    const rows: TextItem[][] = [];
+    // Items sorted top to bottom join the current row while they stay within
+    // SAME_LINE of its average height, so gradual drift doesn't split a line.
+    const rows: { y: number; items: TextItem[] }[] = [];
     const sorted = items
       .filter((item) => item.str.trim())
       .sort((a, b) => b.y - a.y || a.x - b.x);
     for (const item of sorted) {
-      const row = rows.find((r) => Math.abs(r[0].y - item.y) <= SAME_LINE);
-      if (row) row.push(item);
-      else rows.push([item]);
+      const row = rows.at(-1);
+      if (row && Math.abs(row.y - item.y) <= SAME_LINE) {
+        row.items.push(item);
+        row.y += (item.y - row.y) / row.items.length;
+      } else {
+        rows.push({ y: item.y, items: [item] });
+      }
     }
-    for (const row of rows) {
+    for (const { items: row } of rows) {
       row.sort((a, b) => a.x - b.x);
       let line = "";
       let prevEnd = -Infinity;

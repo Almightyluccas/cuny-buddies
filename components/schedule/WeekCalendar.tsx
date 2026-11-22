@@ -45,7 +45,7 @@ export default function WeekCalendar({
   onTapEmpty?: (date: string, minute: number) => void;
 }) {
   const dates = weekDates(week);
-  const { from, to } = visibleHours(schedule);
+  const { from, to } = visibleHours(schedule, !!onTapEmpty);
   const hours = Array.from({ length: to - from }, (_, i) => from + i);
   const today = localToday();
   const top = (minutes: number) => (minutes - from * 60) * MIN_PX;

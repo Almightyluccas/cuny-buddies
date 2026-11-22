@@ -77,7 +77,16 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
   // choosing it doesn't wipe a saved schedule before anything is added.
   function update(next: Schedule, save = true) {
     setSchedule(next);
-    if (save) setSaveState(saveSchedule(next));
+    setSaveState(save ? saveSchedule(next) : "idle");
+  }
+
+  // Onboarding can't move on while the latest change is unsaved.
+  function finish() {
+    if (saveState === "unavailable" || saveState === "invalid") {
+      setError("Your latest change isn't saved yet. Fix the problem above before finishing.");
+      return;
+    }
+    onFinish?.();
   }
 
   async function handleFile(file: File) {
@@ -95,7 +104,19 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
         setError("We read your schedule, but part of it isn't in the format we expect. Try printing it again, or add your free time manually.");
         return;
       }
-      update(checked.data);
+      // An import that can't be stored stays on this screen instead of looking saved.
+      const result = saveSchedule(checked.data);
+      if (result !== "saved") {
+        setError(
+          result === "unavailable"
+            ? "This browser couldn't store your schedule (private window or full storage). Check storage settings and try again."
+            : "We read your schedule, but part of it isn't in the format we expect. Try printing it again, or add your free time manually.",
+        );
+        return;
+      }
+      setSchedule(checked.data);
+      setSaveState("saved");
+      setHasStored(true);
       setWeek(initialWeek(checked.data, localToday()));
       setStep("review");
     } catch (e) {
@@ -307,7 +328,7 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
             )}
           </span>
           {onFinish && (
-            <Button type="button" onClick={onFinish}>
+            <Button type="button" onClick={finish}>
               Finish
             </Button>
           )}

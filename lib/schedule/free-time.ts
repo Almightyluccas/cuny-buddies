@@ -126,8 +126,10 @@ export function freeOn(schedule: Schedule, date: string): FreeBlock[] {
 }
 
 // Hours to show: the earliest start to the latest end of any class or added
-// block, within 7:00–22:00. A schedule with neither shows 9:00–17:00.
-export function visibleHours(schedule: Schedule): { from: number; to: number } {
+// block, within 7:00–22:00. A schedule with neither shows 9:00–17:00. While
+// editing, the full 7:00–22:00 shows so any time can be tapped.
+export function visibleHours(schedule: Schedule, editing = false): { from: number; to: number } {
+  if (editing) return { from: DAY_START / 60, to: DAY_END / 60 };
   const times = [
     ...schedule.courses.flatMap((c) => c.meetings),
     ...schedule.addedFree,

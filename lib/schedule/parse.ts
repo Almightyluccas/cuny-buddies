@@ -92,7 +92,8 @@ const FALLBACK_WEEKS = 16;
 // print has no term dates. Every value is cut to the limits in model.ts, so
 // odd prints can't produce a schedule the server rejects.
 export function parseScheduleBuilder(lines: string[], today: string): ParseResult {
-  const clean = lines.map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+  // Control characters carry nothing useful and bloat the stored text.
+  const clean = lines.map((l) => l.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
   const warnings: string[] = [];
   const joined = clean.join("\n");
 
@@ -136,7 +137,7 @@ export function parseScheduleBuilder(lines: string[], today: string): ParseResul
       printedBy: cap(printedBy, 200),
       printedAt: printedAt ? cap(`${printedAt[1]}, ${printedAt[2]}`, 40) : undefined,
       warnings: warnings.slice(0, 100).map((w) => w.slice(0, 300)),
-      text: clean.join("\n").slice(0, 200_000),
+      text: clean.join("\n").slice(0, 200_000).replace(/[\ud800-\udbff]$/, ""), // don't split a surrogate pair
       parserVersion: PARSER_VERSION,
     },
     skipped,
@@ -331,8 +332,11 @@ function courseDates(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: D
     const m = line.match(DATE_RANGE);
     if (!m) continue;
     let range = dateRange(year, m[1], m[2], m[3], m[4]);
-    // In a term that crosses New Year, January dates belong to the next year.
-    if (range && term && range.startDate < term.startDate) range = dateRange(year + 1, m[1], m[2], m[3], m[4]);
+    // Only in a term that crosses New Year do early dates (January) belong to
+    // the next year; elsewhere a class may simply start before the term.
+    if (range && term && term.endDate.slice(0, 4) > term.startDate.slice(0, 4) && range.startDate < term.startDate) {
+      range = dateRange(year + 1, m[1], m[2], m[3], m[4]);
+    }
     if (range) return range;
   }
   return fallback;

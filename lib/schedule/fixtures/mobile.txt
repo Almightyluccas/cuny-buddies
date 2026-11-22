@@ -26,8 +26,7 @@ Building Rm MR2 Building Rm MR2
 LEC
 Aug 28 - Dec 21 Aug 28 - Dec 21
 Marshak Science
-pm CSC 33600 CSC 33600
-5
+5 pm CSC 33600 CSC 33600
 Building Rm 1001
 LEC LEC
 Aug 28 - Dec 21
@@ -35,8 +34,7 @@ North Academic North Academic
 Center Rm 5/126 Center Rm 5/126
 6 pm
 Aug 28 - Dec 21 Aug 28 - Dec 21
-7 pm
-CSC 45600
+7 pm CSC 45600
 LEC
 North Academic
 8 pm Center Rm 4/121B

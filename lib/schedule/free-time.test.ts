@@ -112,6 +112,8 @@ describe("calendar range", () => {
     expect(visibleHours(s)).toEqual({ from: 12, to: 21 });
     expect(visibleHours(schedule([course("C", [{ days: ["Mon"], start: 420, end: 1320 }])]))).toEqual({ from: 7, to: 22 });
     expect(visibleHours(emptySchedule())).toEqual({ from: 9, to: 17 });
+    // Editing shows every hour so any time can be tapped.
+    expect(visibleHours(s, true)).toEqual({ from: 7, to: 22 });
   });
 
   it("opens on this week during the term, else the nearest term week", () => {

@@ -172,6 +172,27 @@ describe("partial or unusual prints", () => {
     ]);
   });
 
+  it("keeps a class that starts just before its term in the same year", () => {
+    const { schedule } = parseScheduleBuilder([
+      "BIO 10100 2026 Fall Term: Aug 28 - Dec 21",
+      "Fri : 10:00 AM to 12:00 PM",
+      "Aug 26 - Oct 15",
+    ], TODAY);
+    expect(schedule.courses[0]).toMatchObject({ startDate: "2026-08-26", endDate: "2026-10-15" });
+  });
+
+  it("strips control characters and never ends the text mid-character", () => {
+    const { schedule } = parseScheduleBuilder([
+      "CSC 10300\u0001 2026 Fall Term: Aug 28 - Dec 21",
+      "Mon : 9:00 AM to 10:15 AM",
+      "x".repeat(199_990) + "😀😀😀😀😀😀",
+    ], TODAY);
+    expect(schedule.courses[0].code).toBe("CSC 10300");
+    expect(schedule.text).not.toMatch(/[\u0000-\u0009\u000b-\u001f]/); // newlines separate lines
+    expect(schedule.text).not.toMatch(/[\ud800-\udbff]$/);
+    expect(schedule.text!.length).toBeLessThanOrEqual(200_000);
+  });
+
   it("skips day 0 or 99 instead of failing the import", () => {
     const { schedule } = parseScheduleBuilder([
       "BIO 10100 2026 Fall Term: Aug 28 - Dec 21",
