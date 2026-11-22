@@ -1,0 +1,150 @@
+Mon Tue Wed Thu Fri Sat
+Aug 31 Sep 1 Sep 2 Sep 3 Sep 4 Sep 5
+9 am
+10 am
+11 am
+12 pm
+CSC 30400 CSC 30400
+LEC LEC
+1 pm Shepard Hall Rm S- Shepard Hall Rm S-
+376 376
+Aug 28 - Dec 21 Aug 28 - Dec 21
+2 pm
+CSC 32200 CSC 32200
+CHEM 10301
+LEC LEC
+LEC
+Steinman Hall Rm 161 Steinman Hall Rm 161
+Marshak Science
+3 pm Aug 28 - Dec 21 Aug 28 - Dec 21
+Building Rm 408
+CHEM 10301 Aug 28 - Dec 21 CHEM 10301
+LEC LEC
+4 pm Marshak Science Marshak Science
+CHEM 10301
+Building Rm MR2 Building Rm MR2
+LEC
+Aug 28 - Dec 21 Aug 28 - Dec 21
+Marshak Science
+pm CSC 33600 CSC 33600
+5
+Building Rm 1001
+LEC LEC
+Aug 28 - Dec 21
+North Academic North Academic
+Center Rm 5/126 Center Rm 5/126
+6 pm
+Aug 28 - Dec 21 Aug 28 - Dec 21
+7 pm
+CSC 45600
+LEC
+North Academic
+8 pm Center Rm 4/121B
+Aug 28 - Dec 21
+9 pm
+10 pm
+August 30 - September 5, 2026
+Aug Sep Oct Nov Dec Jan '27
+General Chemistry I
+Introduction to Theoretical Computer Science
+Software Engineering
+Introduction to Database Systems
+Topics in Software Engineering
+Printed by: Student Name
+2026 Fall Term: Aug 28 - Dec 21
+CHEM 10301
+Regular Academic Session
+General Chemistry I
+Mon : 4:00 PM to 5:50 PM
+Tue, Thu : 3:30 PM to 4:45 PM
+Wed : 2:00 PM to 3:50 PM
+City College
+In Person
+LEC R4 EnrolledEnrolled
+Mon : 4:00 PM to 5:50 PM Marshak Science Building Rm 1001
+18506
+Tue, Thu : 3:30 PM to 4:45 PM Marshak Science Building Rm MR2
+Seats: Full
+Wed : 2:00 PM to 3:50 PM Marshak Science Building Rm 408
+Wait List: None
+Avery Lin; Blake Moss; Casey Ruiz
+4.0/4.0 Progress Units
+Course Attributes: General Chemistry I; Low Textbook Cost; Chemistry I
+PRE - MATH 19500 (MIN C)
+ Book Title:Chemistry 2e Author:Flowers, Paul, Theopold, Klaus Publisher:Openstax Publish Year:2019 Edition:2nd
+Price:15.79 USD
+2026 Fall Term: Aug 28 - Dec 21
+CSC 30400
+Regular Academic Session
+Introduction to Theoretical Computer Science
+Mon, Wed : 12:30 PM to 1:45 PM
+City College
+LEC D2 EnrolledEnrolled
+In Person
+19240
+Shepard Hall Rm S-376
+Seats: Full
+Devon Park
+Wait List: None
+3.0/3.0 Progress Units
+PRE: CSC 22000
+ENGR students only
+ Book Title:Introduction to the Theory of Computation Author:Michael Sipser Publisher:Cengage Learning Publish Year:2012
+Edition:3 Price:66.38 USD
+2026 Fall Term: Aug 28 - Dec 21
+CSC 32200
+Regular Academic Session
+Software Engineering
+Tue, Thu : 2:00 PM to 3:15 PM
+City College
+LEC P EnrolledEnrolled
+In Person
+19468
+Steinman Hall Rm 161
+Seats: Full
+Emery Cole
+Wait List: None
+3.0/3.0 Progress Units
+Course Attributes: Low Textbook Cost
+PRE: CSC 22000, 22100
+ENGR students only
+ Book Title:Object-Oriented and Classical Software Engineering Author:SCHACH Publisher:McGraw-Hill Publish Year:2010
+Edition:8 Price:14.63 USD
+2026 Fall Term: Aug 28 - Dec 21
+CSC 33600
+Regular Academic Session
+Introduction to Database Systems
+Tue, Thu : 5:00 PM to 6:15 PM
+City College
+LEC S EnrolledEnrolled
+In Person
+19474
+North Academic Center Rm 5/126
+Seats: Full
+Finley Shaw
+Wait List: None
+3.0/3.0 Progress Units
+Course Attributes: Database
+PRE: CSC 22000, 22100
+ENGR students only
+ Book Title:First Course in Database Systems, A Author:Ullman, Jeffrey; Widom, Jennif Publisher:Pearson Education (US)
+Publish Year:2007 Edition:3 Price:39.4 USD
+2026 Fall Term: Aug 28 - Dec 21
+CSC 45600
+Regular Academic Session
+Topics in Software Engineering
+Mon : 6:30 PM to 9:00 PM
+City College
+LEC 1HJ EnrolledEnrolled
+In Person
+21018
+North Academic Center Rm 4/121B
+Seats: 29/30
+Gray Holt
+Wait List: None
+3.0/3.0 Progress Units
+Course Attributes: Low Textbook Cost
+PRE: CSC 22000 & CSC 22100
+ENGR students only
+ Book Title:Agile Anywhere : Essays on Agile Projects and Beyo Author:Hazzan, Orit, Dubinsky, Yael Publisher:Springer Publish
+Year:2014 Edition: Price:17.37 USD

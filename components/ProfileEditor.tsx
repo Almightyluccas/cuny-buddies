@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
-import OnboardingCalendar from "@/components/OnboardingCalendar";
+import ScheduleSetup from "@/components/schedule/ScheduleSetup";
 import {
   BOROUGHS,
   CAMPUSES,
@@ -37,7 +37,6 @@ type FormState = {
   clubs: string; // comma separated
   lookingFor: string; // comma separated
   socials: string; // one per line: "Label, https://..."
-  unavailableSlots: string[];
 };
 
 const csvToArr = (s: string) =>
@@ -80,7 +79,6 @@ function userToForm(u: User): FormState {
     clubs: arrToCsv(u.clubs),
     lookingFor: arrToCsv(u.lookingFor),
     socials: socialsToText(u.socials),
-    unavailableSlots: u.unavailableSlots ?? [],
   };
 }
 
@@ -100,7 +98,6 @@ function formToUser(f: FormState): User {
     clubs: csvToArr(f.clubs),
     lookingFor: csvToArr(f.lookingFor),
     socials: textToSocials(f.socials),
-    unavailableSlots: f.unavailableSlots,
   };
 }
 
@@ -129,18 +126,7 @@ export default function ProfileEditor() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const currentProfile = localStorage.getItem(STORAGE_KEY);
-      const currentAvailability = currentProfile
-        ? (JSON.parse(currentProfile) as User).unavailableSlots
-        : undefined;
-      const user = formToUser(form);
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          ...user,
-          unavailableSlots: currentAvailability ?? user.unavailableSlots,
-        }),
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formToUser(form)));
       setSaved(true);
     } catch {
       // storage unavailable (e.g. private window); leave UI unchanged
@@ -151,6 +137,7 @@ export default function ProfileEditor() {
     "rounded-xl border border-border bg-surface px-4 py-2.5 text-sm outline-none focus:border-brand";
 
   return (
+    <div className="flex flex-col gap-6">
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
         <h1 className="text-2xl font-bold">My profile</h1>
@@ -281,8 +268,13 @@ export default function ProfileEditor() {
           )}
         </div>
       </div>
-      <OnboardingCalendar mode="profile" />
     </form>
+      <section id="schedule" className="scroll-mt-6 rounded-2xl border border-border bg-surface p-6 sm:p-8">
+        <h2 className="text-xl font-bold">Schedule</h2>
+        <p className="mb-5 mt-1 text-sm text-muted">Your classes and free time, week by week.</p>
+        <ScheduleSetup />
+      </section>
+    </div>
   );
 }
 

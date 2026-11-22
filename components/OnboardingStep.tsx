@@ -40,8 +40,7 @@ type FormState = {
   lookingFor: string;
   instagram: string;
   linkedin: string;
-  github: string;
-  unavailableSlots: string[];
+  github: string;
 };
 
 const stages: { id: OnboardingStage; title: string }[] = [
@@ -167,8 +166,7 @@ function emptyForm(): FormState {
     lookingFor: "Friends, Study mates",
     instagram: "",
     linkedin: "",
-    github: "",
-    unavailableSlots: [],
+    github: "",
   };
 }
 
@@ -186,8 +184,7 @@ function userToForm(user: User): FormState {
     hobbies: arrayToCsv(user.hobbies),
     clubs: arrayToCsv(user.clubs),
     lookingFor: arrayToCsv(user.lookingFor),
-    ...socialsToFields(user.socials),
-    unavailableSlots: user.unavailableSlots ?? [],
+    ...socialsToFields(user.socials),
   };
 }
 
@@ -206,8 +203,7 @@ function formToUser(form: FormState): User {
     hobbies: csvToArray(form.hobbies),
     clubs: csvToArray(form.clubs),
     lookingFor: csvToArray(form.lookingFor),
-    socials: fieldsToSocials(form),
-    unavailableSlots: form.unavailableSlots,
+    socials: fieldsToSocials(form),
   };
 }
 
