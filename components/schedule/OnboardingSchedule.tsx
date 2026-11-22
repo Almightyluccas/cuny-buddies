@@ -13,7 +13,13 @@ export default function OnboardingSchedule() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!localStorage.getItem(PROFILE_KEY)) router.replace("/welcome");
+    let hasProfile = false;
+    try {
+      hasProfile = !!localStorage.getItem(PROFILE_KEY);
+    } catch {
+      // Storage blocked: onboarding can't have saved a profile either.
+    }
+    if (!hasProfile) router.replace("/welcome");
   }, [router]);
 
   return (

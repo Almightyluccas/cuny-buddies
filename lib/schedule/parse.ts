@@ -7,6 +7,7 @@ import { CAMPUSES, type CampusId } from "@/lib/campuses";
 import {
   DAY_END,
   DAY_START,
+  DAYS,
   type Course,
   type Day,
   type Meeting,
@@ -275,7 +276,7 @@ function parseTile(
     waitlist: course.waitlist,
     startDate: range.startDate,
     endDate: range.endDate,
-    meetings: [...meetings.values()].slice(0, 20).map((m) => ({ ...m, location: cap(m.location, 200) })),
+    meetings: regroup([...meetings.values()]).slice(0, 20).map((m) => ({ ...m, location: cap(m.location, 200) })),
   } };
 }
 
@@ -288,6 +289,30 @@ function isNameLine(line: string) {
     !isCollegeLine(line) && // a surname like Hunter or Lehman is still a name
     !/students only/i.test(line)
   );
+}
+
+// A class can print as "Mon, Wed : 12:30 PM to 1:45 PM" and again as one line
+// per day with its room. Merge by day and time, keeping each day's room, then
+// rejoin days that share a time and room, so nothing shows twice.
+function regroup(list: Meeting[]): Meeting[] {
+  const slots = new Map<string, { start: number; end: number; days: Map<Day, string | undefined> }>();
+  for (const m of list) {
+    const key = `${m.start}-${m.end}`;
+    const slot = slots.get(key) ?? { start: m.start, end: m.end, days: new Map() };
+    slots.set(key, slot);
+    for (const d of m.days) slot.days.set(d, slot.days.get(d) ?? m.location);
+  }
+  const out: Meeting[] = [];
+  for (const { start, end, days } of slots.values()) {
+    const byLocation = new Map<string, Day[]>();
+    for (const d of DAYS) {
+      if (!days.has(d)) continue;
+      const location = days.get(d) ?? "";
+      byLocation.set(location, [...(byLocation.get(location) ?? []), d]);
+    }
+    for (const [location, ds] of byLocation) out.push({ days: ds, start, end, ...(location && { location }) });
+  }
+  return out;
 }
 
 function isCollegeLine(line: string) {

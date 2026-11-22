@@ -172,6 +172,21 @@ describe("partial or unusual prints", () => {
     ]);
   });
 
+  it("merges a combined meeting line with per-day lines that name different rooms", () => {
+    const { schedule } = parseScheduleBuilder([
+      "CSC 10300 2026 Fall Term: Aug 28 - Dec 21",
+      "Mon, Wed : 12:30 PM to 1:45 PM",
+      "Mon : 12:30 PM to 1:45 PM Shepard Hall Rm 101",
+      "Wed : 12:30 PM to 1:45 PM Marshak Rm 202",
+      "Fri : 9:00 AM to 10:00 AM",
+    ], TODAY);
+    expect(schedule.courses[0].meetings).toEqual([
+      { days: ["Mon"], start: 750, end: 825, location: "Shepard Hall Rm 101" },
+      { days: ["Wed"], start: 750, end: 825, location: "Marshak Rm 202" },
+      { days: ["Fri"], start: 540, end: 600 },
+    ]);
+  });
+
   it("keeps instructors whose surname is also a college name", () => {
     const { schedule } = parseScheduleBuilder([
       "CSC 10300 2026 Fall Term: Aug 28 - Dec 21",

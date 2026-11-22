@@ -77,7 +77,9 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
   // choosing it doesn't wipe a saved schedule before anything is added.
   function update(next: Schedule, save = true) {
     setSchedule(next);
-    setSaveState(save ? saveSchedule(next) : "idle");
+    const result = save ? saveSchedule(next) : "idle";
+    setSaveState(result);
+    if (result === "saved") setHasStored(true);
   }
 
   // Onboarding can't move on while the latest change is unsaved.

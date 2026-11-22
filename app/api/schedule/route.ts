@@ -3,9 +3,10 @@ import { currentUserId } from "@/lib/auth";
 import { getSchedule, saveSchedule } from "@/lib/db/schedules";
 import { scheduleSchema } from "@/lib/schedule/model";
 
-// The 200,000-character text field can take up to 6 bytes per character as
-// JSON (control characters are escaped as \u00XX), plus the other fields.
-const MAX_BYTES = 1_500_000;
+// Above the largest schedule the schema allows. At up to 6 bytes per character
+// as JSON (\u00XX escapes): text 1.2 MB, 30 courses with full-length fields
+// about 1.2 MB, warnings 0.2 MB, about 2.6 MB in all.
+const MAX_BYTES = 3_000_000;
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });

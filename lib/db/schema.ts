@@ -64,7 +64,6 @@ export const usersValidator = {
   },
 };
 
-// Idempotent: creates missing collections, updates validators, ensures indexes.
 // One schedule per user, keyed by user id. The API validates the full shape
 // (lib/schedule/model.ts); the database checks the essentials.
 export const schedulesValidator = {
@@ -93,6 +92,7 @@ async function applyValidator(db: Db, name: string, validator: object) {
   }
 }
 
+// Idempotent: creates missing collections, updates validators, ensures indexes.
 export async function ensureSchema(db: Db) {
   await applyValidator(db, COLLECTIONS.users, usersValidator);
   await applyValidator(db, COLLECTIONS.schedules, schedulesValidator);
