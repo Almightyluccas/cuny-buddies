@@ -136,7 +136,7 @@ describe("partial or unusual prints", () => {
 
   it("rolls the year over for terms that cross New Year", () => {
     const { schedule } = parseScheduleBuilder([
-      "ENG 21000 2026 Winter Term: Dec 28 - Jan 22",
+      "ENG 21000 2027 Winter Term: Dec 28 - Jan 22",
       "Mon : 10:00 AM to 1:00 PM",
     ], TODAY);
     expect(schedule.term).toMatchObject({ startDate: "2026-12-28", endDate: "2027-01-22" });
@@ -170,6 +170,20 @@ describe("partial or unusual prints", () => {
       ["2026-08-28", "2026-12-21"],
       ["2027-01-02", "2027-01-25"],
     ]);
+  });
+
+  it("keeps instructors whose surname is also a college name", () => {
+    const { schedule } = parseScheduleBuilder([
+      "CSC 10300 2026 Fall Term: Aug 28 - Dec 21",
+      "Mon : 9:00 AM to 10:15 AM Shepard Hall Rm 101",
+      "Ann Hunter; Bo Lehman",
+    ], TODAY);
+    expect(schedule.courses[0].instructors).toEqual(["Ann Hunter", "Bo Lehman"]);
+  });
+
+  it("without a term, moves a class range that's already over to next year", () => {
+    const { schedule } = parseScheduleBuilder(["CSC 10300", "Mon : 9:00 AM to 10:15 AM", "Jan 27 - May 26"], TODAY);
+    expect(schedule.courses[0]).toMatchObject({ startDate: "2027-01-27", endDate: "2027-05-26" });
   });
 
   it("keeps a class that starts just before its term in the same year", () => {
@@ -249,7 +263,7 @@ describe("review fixes", () => {
 
   it("dates January classes in a term that crosses New Year to the next year", () => {
     const { schedule } = parseScheduleBuilder(
-      ["ENG 21000 2026 Winter Term: Dec 28 - Jan 22", "Mon : 10:00 AM to 1:00 PM", "Jan 4 - Jan 22"],
+      ["ENG 21000 2027 Winter Term: Dec 28 - Jan 22", "Mon : 10:00 AM to 1:00 PM", "Jan 4 - Jan 22"],
       TODAY,
     );
     expect(schedule.courses[0]).toMatchObject({ startDate: "2027-01-04", endDate: "2027-01-22" });

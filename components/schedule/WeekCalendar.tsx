@@ -171,7 +171,7 @@ function DayColumn({
           type="button"
           disabled={!onToggleFree}
           onClick={() => onToggleFree?.({ ...b, removed: true })}
-          className="absolute inset-x-1 rounded-md border border-dashed border-emerald-300 text-[10px] text-emerald-800/70 hover:bg-emerald-50"
+          className="absolute inset-x-1 z-[11] rounded-md border border-dashed border-emerald-300 bg-surface/80 text-[10px] text-emerald-800/70 hover:bg-emerald-50"
           style={{ top: top(b.start), height: (b.end - b.start) * MIN_PX }}
           aria-label={`Restore free time ${formatTime(b.start)} to ${formatTime(b.end)}`}
         >

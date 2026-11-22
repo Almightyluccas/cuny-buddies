@@ -285,9 +285,14 @@ function isNameLine(line: string) {
     !NOISE.test(line) &&
     !MODE.test(line) &&
     !SESSION.test(line) &&
-    !COLLEGE_NAMES.test(line) &&
+    !isCollegeLine(line) && // a surname like Hunter or Lehman is still a name
     !/students only/i.test(line)
   );
+}
+
+function isCollegeLine(line: string) {
+  const name = line.match(COLLEGE_NAMES)?.[0];
+  return !!name && !line.replace(name, "").trim();
 }
 
 // The first plain line after the code and term, or the text before a
@@ -311,7 +316,12 @@ type DateRange = { startDate: string; endDate: string };
 function parseTerm(text: string) {
   const m = text.match(TERM);
   if (!m) return undefined;
-  const range = dateRange(Number(m[1]), m[3], m[4], m[5], m[6]);
+  // A term that crosses New Year is named for its January year
+  // ("2027 Winter Term: Dec 28 - Jan 22" starts in December 2026).
+  let range = dateRange(Number(m[1]), m[3], m[4], m[5], m[6]);
+  if (range && range.endDate.slice(0, 4) > range.startDate.slice(0, 4)) {
+    range = dateRange(Number(m[1]) - 1, m[3], m[4], m[5], m[6]);
+  }
   if (!range) return undefined;
   const session = text.slice(m.index).match(SESSION)?.[1];
   return { name: `${m[1]} ${titleCase(m[2])} Term`, session, ...range };
@@ -337,6 +347,9 @@ function courseDates(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: D
     if (range && term && term.endDate.slice(0, 4) > term.startDate.slice(0, 4) && range.startDate < term.startDate) {
       range = dateRange(year + 1, m[1], m[2], m[3], m[4]);
     }
+    // Without a term the year is a guess from today; a range already over
+    // must be next year's.
+    if (range && !term && range.endDate < fallback.startDate) range = dateRange(year + 1, m[1], m[2], m[3], m[4]);
     if (range) return range;
   }
   return fallback;

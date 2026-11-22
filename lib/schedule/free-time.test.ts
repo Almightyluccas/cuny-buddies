@@ -145,6 +145,9 @@ describe("adding free time", () => {
     expect(suggestRange(s, "2026-08-31", 1315)).toEqual({ start: 1290, end: 1320 }); // ends by 22:00
     expect(suggestRange(s, "2026-08-31", 300)).toEqual({ start: 420, end: 480 }); // starts by 7:00
     expect(suggestRange(s, "2026-08-31", 822)).toEqual({ start: 820, end: 880 }); // not inside the class ending 13:40
+    // A tap in the empty half of a lane, while a longer class is still running.
+    const lanes = schedule([course("A", [{ days: ["Mon"], start: 600, end: 720 }]), course("B", [{ days: ["Mon"], start: 630, end: 660 }])]);
+    expect(suggestRange(lanes, "2026-08-31", 675)).toEqual({ start: 720, end: 780 });
   });
 
   it("adds a block on each chosen day without duplicates", () => {

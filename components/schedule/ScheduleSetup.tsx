@@ -99,7 +99,14 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
         return;
       }
       // Check before showing it, so an import that can't be saved never looks imported.
-      const checked = scheduleSchema.safeParse({ ...parsed, device: detectDevice(navigator) });
+      // Free time the student added or removed by hand carries over to a re-import.
+      const previous = loadSchedule();
+      const checked = scheduleSchema.safeParse({
+        ...parsed,
+        device: detectDevice(navigator),
+        addedFree: previous?.addedFree ?? [],
+        removedFree: previous?.removedFree ?? [],
+      });
       if (!checked.success) {
         setError("We read your schedule, but part of it isn't in the format we expect. Try printing it again, or add your free time manually.");
         return;
@@ -158,7 +165,7 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
             ) : (
               <li>Scroll to the bottom of your schedule and click <b>Print</b>.</li>
             )}
-            <li>Choose <b>Save as PDF</b>, then upload it here. It&apos;s read on your device and never uploaded.</li>
+            <li>Choose <b>Save as PDF</b>, then upload it here. The file is read on your device and never uploaded; only your schedule details are saved.</li>
           </ol>
           <label className="mt-4 inline-flex cursor-pointer items-center justify-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-hover has-[:disabled]:cursor-wait has-[:disabled]:opacity-60">
             {busy ? "Reading your schedule…" : "Upload schedule PDF"}
@@ -186,7 +193,14 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
             variant="outline"
             className="mt-4"
             onClick={() => {
-              update(emptySchedule("manual"), false);
+              // Replacing a saved schedule is confirmed and saved right away, so
+              // what's shown always matches what's stored.
+              if (hasStored) {
+                if (!window.confirm("Start over with manual free time? This replaces your saved schedule, including imported classes.")) return;
+                update(emptySchedule("manual"));
+              } else {
+                update(emptySchedule("manual"), false);
+              }
               setStep("review");
             }}
           >
@@ -234,7 +248,7 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
             )}
           </div>
           <ul className="mt-1 list-disc pl-5">
-            {warnings.map((w) => <li key={w}>{w}</li>)}
+            {warnings.map((w, i) => <li key={`${i}-${w}`}>{w}</li>)}
           </ul>
         </div>
       )}
@@ -286,8 +300,8 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
                     {c.code ?? "Unnamed class"}
                     {c.title && <span className="font-normal text-muted"> · {c.title}</span>}
                   </p>
-                  {c.meetings.map((m) => (
-                    <p key={`${m.days}-${m.start}`} className="text-muted">
+                  {c.meetings.map((m, j) => (
+                    <p key={`${j}-${m.days}-${m.start}-${m.end}`} className="text-muted">
                       {m.days.join(", ")} {formatTime(m.start)}–{formatTime(m.end)}
                       {m.location && ` · ${m.location}`}
                     </p>
