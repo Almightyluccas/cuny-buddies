@@ -12,6 +12,7 @@ import {
   type Meeting,
   type Schedule,
 } from "@/lib/schedule/model";
+import { addDays } from "@/lib/schedule/free-time";
 
 export const PARSER_VERSION = 1;
 
@@ -67,7 +68,8 @@ const COLLEGES: [CampusId, RegExp][] = [
   ["gc", /Graduate Center/i],
 ];
 const COLLEGE_NAMES = new RegExp(
-  [...COLLEGES.map(([, re]) => re.source), ...CAMPUSES.map((c) => c.name)].join("|"),
+  // Full names first, so "The City College of New York" matches whole.
+  [...CAMPUSES.map((c) => c.name), ...COLLEGES.map(([, re]) => re.source)].join("|"),
   "i",
 );
 
@@ -83,45 +85,65 @@ interface Tile {
   lines: string[];
 }
 
-export function parseScheduleBuilder(lines: string[]): ParseResult {
+// Classes run this long from `today` when a print has no term dates.
+const FALLBACK_WEEKS = 16;
+
+// `today` is the student's local date ("YYYY-MM-DD"), used only when the
+// print has no term dates. Every value is cut to the limits in model.ts, so
+// odd prints can't produce a schedule the server rejects.
+export function parseScheduleBuilder(lines: string[], today: string): ParseResult {
   const clean = lines.map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
   const warnings: string[] = [];
   const joined = clean.join("\n");
 
   const term = parseTerm(joined);
-  const printedBy = joined.match(/Printed by:\s*(.+?)(?=\s+\d{4}\s+(?:Fall|Spring|Summer|Winter)\b|\n|$)/i)?.[1]?.trim();
+  const printedBy = joined.match(/Printed by:\s*(.+?)(?=\s+\d{4}\s+(?:Fall|Spring|Summer|Winter)\b|\n|$)/i)?.[1];
   const printedAt = joined.match(/\b(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*(\d{1,2}:\d{2}\s?[AP]M)/i);
   const termCode = joined.match(/[?&]term=(\d{4,10})/)?.[1];
-  if (!term) warnings.push("Term dates not found; set each class's dates.");
+  const fallback = term ?? { startDate: today, endDate: addDays(today, FALLBACK_WEEKS * 7 - 1) };
+  if (!term) {
+    warnings.push(
+      `Term dates weren't found, so classes are shown for ${FALLBACK_WEEKS} weeks from today. Import a full Schedule Builder print to get the real dates.`,
+    );
+  }
 
   const courses: Course[] = [];
   const skipped: string[] = [];
   for (const tile of splitTiles(clean)) {
-    const course = parseTile(tile, term);
+    const course = parseTile(tile, term, fallback);
     if (course.meetings.length) courses.push(course);
     else skipped.push(course.code ?? course.title ?? "A course");
   }
   if (!courses.length) warnings.push("No class times found in this file.");
   for (const name of skipped) warnings.push(`${name}: no meeting times found (online, TBA, or unreadable).`);
-  for (const c of courses) {
-    if (!c.code) warnings.push(`A class at ${describe(c.meetings[0])} has no readable course code.`);
-  }
 
   return {
     schedule: {
       source: "schedule-builder",
-      courses,
+      courses: courses.slice(0, 30),
       addedFree: [],
       removedFree: [],
-      term: term && { ...term, code: termCode },
-      printedBy,
-      printedAt: printedAt ? `${printedAt[1]}, ${printedAt[2]}` : undefined,
-      warnings,
+      term: term && {
+        name: term.name,
+        session: cap(term.session, 200),
+        code: cap(termCode, 20),
+        startDate: term.startDate,
+        endDate: term.endDate,
+      },
+      printedBy: cap(printedBy, 200),
+      printedAt: printedAt ? cap(`${printedAt[1]}, ${printedAt[2]}`, 40) : undefined,
+      warnings: warnings.slice(0, 100).map((w) => w.slice(0, 300)),
       text: clean.join("\n").slice(0, 200_000),
       parserVersion: PARSER_VERSION,
     },
     skipped,
   };
+}
+
+// Trims to `max` characters; empty becomes undefined.
+function cap(value: string | undefined, max: number): string | undefined {
+  const v = value?.trim().slice(0, max).trim();
+  return v || undefined;
 }
 
 // Each course tile has one term line, with its course code on the same line
@@ -164,7 +186,7 @@ function isPageChrome(line: string) {
   );
 }
 
-function parseTile(tile: Tile, term: ReturnType<typeof parseTerm>): Course {
+function parseTile(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: DateRange): Course {
   const meetings = new Map<string, Meeting>();
   const course: Partial<Course> = { code: tile.code };
   let sawLocation = false;
@@ -194,16 +216,21 @@ function parseTile(tile: Tile, term: ReturnType<typeof parseTerm>): Course {
     if (classNumber && !course.classNumber) course.classNumber = classNumber;
     const units = line.match(UNITS);
     if (units && course.units === undefined) course.units = Number(units[2]);
-    const mode = line.match(MODE);
-    if (mode && !course.mode) course.mode = titleCase(mode[1]);
     const seats = line.match(/Seats:\s*([\w/ ]+?)(?=\s+Wait List|$)/i)?.[1];
-    if (seats && !course.seats) course.seats = seats.trim();
+    if (seats && !course.seats) course.seats = cap(seats, 20);
     const waitlist = line.match(/Wait List:\s*([\w/ ]+)/i)?.[1];
-    if (waitlist && !course.waitlist) course.waitlist = waitlist.trim();
-    const college = COLLEGES.find(([, re]) => re.test(line));
-    if (college && !course.college && line.length < 80) {
-      course.college = line.match(COLLEGE_NAMES)?.[0];
-      course.campusId = college[0];
+    if (waitlist && !course.waitlist) course.waitlist = cap(waitlist, 20);
+
+    // College and mode count only on a line holding nothing else, so a title
+    // like "Introduction to Journalism" or "Online Marketing" isn't mistaken.
+    const collegeName = line.match(COLLEGE_NAMES)?.[0];
+    const mode = line.match(MODE)?.[1];
+    const onlyCollegeOrMode =
+      (collegeName || mode) && !line.replace(collegeName ?? "", "").replace(mode ?? "", "").trim();
+    if (onlyCollegeOrMode && mode && !course.mode) course.mode = titleCase(mode);
+    if (onlyCollegeOrMode && collegeName && !course.college) {
+      course.college = cap(collegeName, 200);
+      course.campusId = COLLEGES.find(([, re]) => re.test(collegeName))?.[0];
     }
 
     if (!MEETING_ONE.test(line) && ROOM.test(line) && !line.includes(":")) {
@@ -212,18 +239,33 @@ function parseTile(tile: Tile, term: ReturnType<typeof parseTerm>): Course {
       for (const m of meetings.values()) m.location ??= location;
       sawLocation = true;
     } else if (sawLocation && !course.instructors && isNameLine(line)) {
-      course.instructors = line.split(";").map((n) => n.trim()).filter(Boolean);
+      course.instructors = line
+        .split(";")
+        .map((n) => cap(n, 200))
+        .filter((n): n is string => !!n)
+        .slice(0, 10);
     }
   }
 
-  course.title = findTitle(tile);
-  const range = courseDates(tile, term);
+  const range = courseDates(tile, term, fallback);
   return {
-    ...course,
+    code: cap(course.code, 20),
+    title: cap(findTitle(tile), 200),
+    component: cap(course.component, 10),
+    section: cap(course.section, 10),
+    status: cap(course.status, 20),
+    classNumber: cap(course.classNumber, 10),
+    college: course.college,
+    campusId: course.campusId,
+    mode: cap(course.mode, 40),
+    instructors: course.instructors?.length ? course.instructors : undefined,
+    units: course.units !== undefined && course.units <= 20 ? course.units : undefined,
+    seats: course.seats,
+    waitlist: course.waitlist,
     startDate: range.startDate,
     endDate: range.endDate,
-    meetings: [...meetings.values()],
-  } as Course;
+    meetings: [...meetings.values()].slice(0, 20).map((m) => ({ ...m, location: cap(m.location, 200) })),
+  };
 }
 
 function isNameLine(line: string) {
@@ -253,32 +295,40 @@ function findTitle(tile: Tile): string | undefined {
   return undefined;
 }
 
+type DateRange = { startDate: string; endDate: string };
+
 function parseTerm(text: string) {
   const m = text.match(TERM);
   if (!m) return undefined;
-  const year = Number(m[1]);
-  const startDate = isoDate(year, m[3], m[4]);
-  let endDate = isoDate(year, m[5], m[6]);
-  if (endDate < startDate) endDate = isoDate(year + 1, m[5], m[6]);
+  const range = dateRange(Number(m[1]), m[3], m[4], m[5], m[6]);
+  if (!range) return undefined;
   const session = text.slice(m.index).match(SESSION)?.[1];
-  return { name: `${m[1]} ${titleCase(m[2])} Term`, session, startDate, endDate };
+  return { name: `${m[1]} ${titleCase(m[2])} Term`, session, ...range };
 }
 
 // A date range inside the tile but outside the term line is the class's own
 // (e.g. a shorter session); otherwise the class runs the whole term.
-function courseDates(tile: Tile, term: ReturnType<typeof parseTerm>) {
-  const fallback = { startDate: term?.startDate ?? today(), endDate: term?.endDate ?? today() };
-  const year = Number(term?.startDate.slice(0, 4) ?? new Date().getFullYear());
+function courseDates(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: DateRange): DateRange {
+  const year = Number(fallback.startDate.slice(0, 4));
   for (const line of tile.lines) {
     if (TERM.test(line)) continue;
     const m = line.match(DATE_RANGE);
     if (!m) continue;
-    const startDate = isoDate(year, m[1], m[2]);
-    let endDate = isoDate(year, m[3], m[4]);
-    if (endDate < startDate) endDate = isoDate(year + 1, m[3], m[4]);
-    return { startDate, endDate };
+    let range = dateRange(year, m[1], m[2], m[3], m[4]);
+    // In a term that crosses New Year, January dates belong to the next year.
+    if (range && term && range.startDate < term.startDate) range = dateRange(year + 1, m[1], m[2], m[3], m[4]);
+    if (range) return range;
   }
   return fallback;
+}
+
+// "Aug 28" to "Dec 21" in `year`; the end rolls into the next year when it's
+// earlier than the start. Null for impossible dates such as "Sep 31".
+function dateRange(year: number, m1: string, d1: string, m2: string, d2: string): DateRange | null {
+  const startDate = isoDate(year, m1, d1);
+  let endDate = isoDate(year, m2, d2);
+  if (startDate && endDate && endDate < startDate) endDate = isoDate(year + 1, m2, d2);
+  return startDate && endDate ? { startDate, endDate } : null;
 }
 
 function toMeeting(days: string, start: string, end: string): Meeting | null {
@@ -299,20 +349,13 @@ export function toMinutes(time: string): number | null {
   return ((hour % 12) + (pm ? 12 : 0)) * 60 + minute;
 }
 
-function isoDate(year: number, month: string, day: string) {
+function isoDate(year: number, month: string, day: string): string | null {
   const index = MONTHS.findIndex((m) => m.toLowerCase() === month.slice(0, 3).toLowerCase());
-  return `${year}-${String(index + 1).padStart(2, "0")}-${day.padStart(2, "0")}`;
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
+  const date = `${year}-${String(index + 1).padStart(2, "0")}-${day.padStart(2, "0")}`;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return index >= 0 && parsed.toISOString().slice(0, 10) === date ? date : null;
 }
 
 function titleCase(s: string) {
   return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function describe(m: Meeting) {
-  const t = (n: number) => `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
-  return `${m.days.join(", ")} ${t(m.start)}–${t(m.end)}`;
 }

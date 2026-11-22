@@ -57,6 +57,37 @@ describe("/api/schedule", () => {
     expect(await getDb().collection(COLLECTIONS.schedules).countDocuments()).toBe(1);
   });
 
+  it("replaces the stored schedule instead of merging into it", async () => {
+    const imported: Schedule = {
+      ...schedule,
+      term: { name: "2026 Fall Term", startDate: "2026-08-28", endDate: "2026-12-21" },
+      printedBy: "Student Name",
+      text: "extracted text",
+    };
+    await post(imported);
+    const before = await getDb().collection(COLLECTIONS.schedules).findOne({});
+    await post(emptySchedule("manual"));
+
+    const res = await GET();
+    expect((await res.json()).schedule).toEqual(emptySchedule("manual"));
+    const after = await getDb().collection(COLLECTIONS.schedules).findOne({});
+    expect(after?.createdAt).toEqual(before?.createdAt);
+    expect(after?.updatedAt.getTime()).toBeGreaterThanOrEqual(before?.updatedAt.getTime());
+  });
+
+  it("limits the body by bytes, not characters", async () => {
+    // 120,000 three-byte characters: well under 300,000 characters, over 300 KB.
+    const wide = JSON.stringify({ ...schedule, text: "€".repeat(120_000) });
+    expect(wide.length).toBeLessThan(300_000);
+    expect((await post(wide)).status).toBe(413);
+    const declared = new Request("http://localhost/api/schedule", {
+      method: "POST",
+      headers: { "content-length": "999999" },
+      body: "{}",
+    });
+    expect((await POST(declared)).status).toBe(413);
+  });
+
   it("requires sign-in", async () => {
     auth.userId = null;
     expect((await post(schedule)).status).toBe(401);

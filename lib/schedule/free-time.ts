@@ -154,3 +154,15 @@ export function localToday(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+// Import warnings plus ones that depend on the current classes, so a warning
+// goes away when the student removes the class it's about.
+export function scheduleWarnings(schedule: Schedule): string[] {
+  const unnamed = schedule.courses
+    .filter((c) => !c.code && c.meetings.length)
+    .map((c) => {
+      const m = c.meetings[0];
+      return `A class on ${m.days.join(", ")} at ${formatTime(m.start)}–${formatTime(m.end)} has no readable course code.`;
+    });
+  return [...schedule.warnings, ...unnamed];
+}

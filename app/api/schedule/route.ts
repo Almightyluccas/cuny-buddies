@@ -3,7 +3,7 @@ import { currentUserId } from "@/lib/auth";
 import { getSchedule, saveSchedule } from "@/lib/db/schedules";
 import { scheduleSchema } from "@/lib/schedule/model";
 
-const MAX_BYTES = 300_000; // extracted text is capped at 200 KB
+const MAX_BYTES = 300_000; // extracted text is capped at 200,000 characters
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
   const userId = await currentUserId();
   if (!userId) return json({ error: "Sign in to save your schedule." }, 401);
 
-  const body = await request.text();
-  if (body.length > MAX_BYTES) return json({ error: "Schedule is too large." }, 413);
+  const body = await readLimited(request, MAX_BYTES);
+  if (body === null) return json({ error: "Schedule is too large." }, 413);
 
   let data: unknown;
   try {
@@ -37,4 +37,31 @@ export async function POST(request: Request) {
 
   await saveSchedule(userId, parsed.data);
   return json({ ok: true });
+}
+
+// The body as text, or null once it passes `max` bytes. Stops reading there
+// instead of buffering an oversized request.
+async function readLimited(request: Request, max: number): Promise<string | null> {
+  if (Number(request.headers.get("content-length") ?? 0) > max) return null;
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const c of chunks) {
+    bytes.set(c, offset);
+    offset += c.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }

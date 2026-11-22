@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { scheduleSchema } from "@/lib/schedule/model";
+import { scheduleWarnings } from "@/lib/schedule/free-time";
 import { parseScheduleBuilder, toMinutes } from "@/lib/schedule/parse";
+
+const TODAY = "2026-11-22";
 
 // Lines extracted from real Schedule Builder prints (scripts/schedule-fixture.mts),
 // with personal names replaced.
@@ -56,7 +59,7 @@ const expected = [
 ];
 
 describe.each(["desktop-portrait", "desktop-landscape", "mobile"])("Schedule Builder print: %s", (name) => {
-  const { schedule, skipped } = parseScheduleBuilder(fixture(name));
+  const { schedule, skipped } = parseScheduleBuilder(fixture(name), TODAY);
 
   it("finds every course with its meetings, locations, and details", () => {
     expect(skipped).toEqual([]);
@@ -95,7 +98,7 @@ describe("partial or unusual prints", () => {
     const { schedule } = parseScheduleBuilder([
       "C S C 3 3 6 0 0 2027 Spring Term: Jan 27 - May 26",
       "Tue, Thu : 5:00 PM to 6:15 PM",
-    ]);
+    ], TODAY);
     expect(schedule.courses).toHaveLength(1);
     expect(schedule.courses[0]).toMatchObject({
       code: undefined,
@@ -103,7 +106,11 @@ describe("partial or unusual prints", () => {
       endDate: "2027-05-26",
       meetings: [{ days: ["Tue", "Thu"], start: 1020, end: 1095 }],
     });
-    expect(schedule.warnings[0]).toMatch(/no readable course code/);
+    expect(scheduleWarnings(schedule)).toEqual([
+      "A class on Tue, Thu at 5:00 PM–6:15 PM has no readable course code.",
+    ]);
+    // The warning goes away with the class.
+    expect(scheduleWarnings({ ...schedule, courses: [] })).toEqual([]);
   });
 
   it("reports a course with no meeting times instead of importing it", () => {
@@ -112,7 +119,7 @@ describe("partial or unusual prints", () => {
       "World History Online asynchronous",
       "MATH 20100 2026 Fall Term: Aug 28 - Dec 21",
       "Mon, Wed : 9:00 AM to 10:15 AM",
-    ]);
+    ], TODAY);
     expect(skipped).toEqual(["HIST 10100"]);
     expect(schedule.courses.map((c) => c.code)).toEqual(["MATH 20100"]);
   });
@@ -123,7 +130,7 @@ describe("partial or unusual prints", () => {
       "Seven Week Session",
       "Fri : 10:00 AM to 12:00 PM",
       "Aug 28 - Oct 16",
-    ]);
+    ], TODAY);
     expect(schedule.courses[0]).toMatchObject({ startDate: "2026-08-28", endDate: "2026-10-16" });
   });
 
@@ -131,7 +138,7 @@ describe("partial or unusual prints", () => {
     const { schedule } = parseScheduleBuilder([
       "ENG 21000 2026 Winter Term: Dec 28 - Jan 22",
       "Mon : 10:00 AM to 1:00 PM",
-    ]);
+    ], TODAY);
     expect(schedule.term).toMatchObject({ startDate: "2026-12-28", endDate: "2027-01-22" });
   });
 
@@ -141,12 +148,12 @@ describe("partial or unusual prints", () => {
       "Mon : 6:00 AM to 7:30 AM",
       "Tue : 3:00 PM to 2:00 PM",
       "Wed : 9:30 PM to 10:00 PM",
-    ]);
+    ], TODAY);
     expect(schedule.courses[0].meetings).toEqual([{ days: ["Wed"], start: 1290, end: 1320 }]);
   });
 
   it("finds nothing in an unrelated document", () => {
-    const { schedule } = parseScheduleBuilder(["Invoice #123", "Total due: $40"]);
+    const { schedule } = parseScheduleBuilder(["Invoice #123", "Total due: $40"], TODAY);
     expect(schedule.courses).toEqual([]);
     expect(schedule.warnings).toContain("No class times found in this file.");
   });
@@ -158,5 +165,66 @@ describe("toMinutes", () => {
     expect(toMinutes("12:00 AM")).toBe(0);
     expect(toMinutes("9 : 05 A M")).toBe(545);
     expect(toMinutes("13:00 PM")).toBeNull();
+  });
+});
+
+describe("review fixes", () => {
+  it("takes college and mode only from lines that hold nothing else", () => {
+    const { schedule } = parseScheduleBuilder(
+      [
+        "JOUR 10100 2026 Fall Term: Aug 28 - Dec 21",
+        "Introduction to Journalism",
+        "Mon : 9:00 AM to 10:15 AM",
+        "City College",
+        "In Person",
+        "MKT 20000 2026 Fall Term: Aug 28 - Dec 21",
+        "Online Marketing",
+        "Tue : 9:00 AM to 10:15 AM",
+        "The City College of New York",
+        "Hybrid",
+      ],
+      TODAY,
+    );
+    expect(schedule.courses[0]).toMatchObject({ title: "Introduction to Journalism", campusId: "ccny", college: "City College", mode: "In Person" });
+    expect(schedule.courses[1]).toMatchObject({ title: "Online Marketing", campusId: "ccny", college: "The City College of New York", mode: "Hybrid" });
+  });
+
+  it("shows classes for 16 weeks from today when the print has no term dates", () => {
+    const { schedule } = parseScheduleBuilder(["CSC 10300", "Mon : 9:00 AM to 10:15 AM"], TODAY);
+    expect(schedule.courses[0]).toMatchObject({ startDate: "2026-11-22", endDate: "2027-03-13" });
+    expect(schedule.warnings[0]).toMatch(/16 weeks from today/);
+    expect(scheduleSchema.safeParse(schedule).success).toBe(true);
+  });
+
+  it("dates January classes in a term that crosses New Year to the next year", () => {
+    const { schedule } = parseScheduleBuilder(
+      ["ENG 21000 2026 Winter Term: Dec 28 - Jan 22", "Mon : 10:00 AM to 1:00 PM", "Jan 4 - Jan 22"],
+      TODAY,
+    );
+    expect(schedule.courses[0]).toMatchObject({ startDate: "2027-01-04", endDate: "2027-01-22" });
+  });
+
+  it("ignores impossible dates instead of storing them", () => {
+    const { schedule } = parseScheduleBuilder(
+      ["BIO 10100 2026 Fall Term: Aug 28 - Dec 21", "Fri : 10:00 AM to 12:00 PM", "Sep 31 - Oct 16"],
+      TODAY,
+    );
+    expect(schedule.courses[0]).toMatchObject({ startDate: "2026-08-28", endDate: "2026-12-21" });
+  });
+
+  it("cuts oversized values to what the server accepts", () => {
+    const names = Array.from({ length: 12 }, (_, i) => `Person Number${String.fromCharCode(65 + i)}`).join("; ");
+    const { schedule } = parseScheduleBuilder(
+      [
+        "CSC 10300 2026 Fall Term: Aug 28 - Dec 21",
+        "Mon : 9:00 AM to 10:15 AM Shepard Hall Rm 101",
+        `Wait List: ${"9".repeat(40)}`,
+        names,
+      ],
+      TODAY,
+    );
+    expect(schedule.courses[0].instructors).toHaveLength(10);
+    expect(schedule.courses[0].waitlist).toHaveLength(20);
+    expect(scheduleSchema.safeParse(schedule).success).toBe(true);
   });
 });

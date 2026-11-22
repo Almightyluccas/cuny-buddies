@@ -10,11 +10,21 @@ import {
   formatTime,
   initialWeek,
   localToday,
+  scheduleWarnings,
   suggestRange,
   WEEK,
   type FreeBlock,
 } from "@/lib/schedule/free-time";
-import { DAY_END, DAY_START, MIN_FREE_MINUTES, emptySchedule, type Block, type Day, type Schedule } from "@/lib/schedule/model";
+import {
+  DAY_END,
+  DAY_START,
+  MIN_FREE_MINUTES,
+  emptySchedule,
+  scheduleSchema,
+  type Block,
+  type Day,
+  type Schedule,
+} from "@/lib/schedule/model";
 import { parseScheduleBuilder } from "@/lib/schedule/parse";
 import { ScheduleFileError, readPdfLines } from "@/lib/schedule/pdf";
 import { loadSchedule, saveSchedule } from "@/lib/schedule/storage";
@@ -33,7 +43,7 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
   const [device, setDevice] = useState<DeviceType>("desktop");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [saveState, setSaveState] = useState<"idle" | "saved" | "failed">("idle");
+  const [saveState, setSaveState] = useState<ReturnType<typeof saveSchedule> | "idle">("idle");
   const [draft, setDraft] = useState<Draft | null>(null); // free time being added from a tap
 
   // Browser-only state (storage, user agent) loads after mount to match SSR.
@@ -52,21 +62,26 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
   // choosing it doesn't wipe a saved schedule before anything is added.
   function update(next: Schedule, save = true) {
     setSchedule(next);
-    if (save) setSaveState(saveSchedule(next) ? "saved" : "failed");
+    if (save) setSaveState(saveSchedule(next));
   }
 
   async function handleFile(file: File) {
     setBusy(true);
     setError("");
     try {
-      const { schedule: parsed } = parseScheduleBuilder(await readPdfLines(file));
+      const { schedule: parsed } = parseScheduleBuilder(await readPdfLines(file), localToday());
       if (!parsed.courses.length) {
         setError("We couldn't find any class times in that file. Check it's your Schedule Builder print, or add your free time manually.");
         return;
       }
-      const next = { ...parsed, device: detectDevice(navigator) };
-      update(next);
-      setWeek(initialWeek(next, localToday()));
+      // Check before showing it, so an import that can't be saved never looks imported.
+      const checked = scheduleSchema.safeParse({ ...parsed, device: detectDevice(navigator) });
+      if (!checked.success) {
+        setError("We read your schedule, but part of it isn't in the format we expect. Try printing it again, or add your free time manually.");
+        return;
+      }
+      update(checked.data);
+      setWeek(initialWeek(checked.data, localToday()));
       setStep("review");
     } catch (e) {
       setError(e instanceof ScheduleFileError ? e.message : "We couldn't read that PDF. Try printing it again, or add your free time manually.");
@@ -148,13 +163,14 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
     );
   }
 
+  const warnings = scheduleWarnings(schedule);
   return (
     <div className="space-y-5">
-      {schedule.warnings.length > 0 && (
+      {warnings.length > 0 && (
         <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Check these:</p>
           <ul className="mt-1 list-disc pl-5">
-            {schedule.warnings.map((w) => <li key={w}>{w}</li>)}
+            {warnings.map((w) => <li key={w}>{w}</li>)}
           </ul>
         </div>
       )}
@@ -236,9 +252,14 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
         <div className="flex items-center gap-3">
           <span aria-live="polite" className="text-sm font-medium">
             {saveState === "saved" && <span className="text-brand">All changes saved</span>}
-            {saveState === "failed" && (
+            {saveState === "unavailable" && (
               <span role="alert" className="text-red-700">
                 Couldn&apos;t save in this browser. Check storage settings.
+              </span>
+            )}
+            {saveState === "invalid" && (
+              <span role="alert" className="text-red-700">
+                That change couldn&apos;t be saved. Undo it or import your schedule again.
               </span>
             )}
           </span>

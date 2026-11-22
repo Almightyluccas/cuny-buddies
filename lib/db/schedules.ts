@@ -11,19 +11,18 @@ function schedules() {
 }
 
 export async function getSchedule(userId: string): Promise<Schedule | null> {
-  const doc = await schedules().findOne(
-    { _id: userId },
-    { projection: { _id: 0, createdAt: 0, updatedAt: 0 } },
-  );
-  return doc;
+  return schedules().findOne({ _id: userId }, { projection: { _id: 0, createdAt: 0, updatedAt: 0 } });
 }
 
-// Replaces the user's schedule; validate with scheduleSchema first.
+// Replaces the user's schedule entirely, so fields the new one doesn't have
+// (e.g. term after switching to manual entry) don't linger. Validate first.
 export async function saveSchedule(userId: string, schedule: Schedule): Promise<void> {
   const now = new Date();
-  await schedules().updateOne(
+  const existing = await schedules().findOne({ _id: userId }, { projection: { createdAt: 1 } });
+  const clean = JSON.parse(JSON.stringify(schedule)) as Schedule; // drop undefined keys
+  await schedules().replaceOne(
     { _id: userId },
-    { $set: { ...schedule, updatedAt: now }, $setOnInsert: { createdAt: now } },
+    { ...clean, createdAt: existing?.createdAt ?? now, updatedAt: now },
     { upsert: true },
   );
 }

@@ -17,16 +17,29 @@ export async function readPdfLines(file: File): Promise<string[]> {
 
   let unpdf: typeof import("unpdf");
   try {
-    unpdf = await import("unpdf"); // ~1 MB, loaded only when importing
+    unpdf = await import("unpdf"); // ~1.6 MB, loaded only when importing
   } catch {
     throw new ScheduleFileError("This browser can't read PDFs. Update it, or add your free time manually.");
   }
-  const pdf = await unpdf.getDocumentProxy(bytes);
-  if (pdf.numPages > MAX_PAGES) throw new ScheduleFileError("That PDF has too many pages to be a schedule.");
 
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new ScheduleFileError("Reading the PDF took too long.")), TIMEOUT_MS),
-  );
-  const { items } = await Promise.race([unpdf.extractTextItems(pdf), timeout]);
-  return itemsToLines(items);
+  // The timeout covers opening and reading; the document is always released.
+  let pdf: Awaited<ReturnType<typeof unpdf.getDocumentProxy>> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new ScheduleFileError("Reading the PDF took too long.")), TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([
+      (async () => {
+        pdf = await unpdf.getDocumentProxy(bytes);
+        if (pdf.numPages > MAX_PAGES) throw new ScheduleFileError("That PDF has too many pages to be a schedule.");
+        const { items } = await unpdf.extractTextItems(pdf);
+        return itemsToLines(items);
+      })(),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timer);
+    void pdf?.loadingTask.destroy();
+  }
 }

@@ -16,11 +16,15 @@ export function loadSchedule(): Schedule | null {
   }
 }
 
-export function saveSchedule(schedule: Schedule): boolean {
+// "invalid" means the schedule itself doesn't fit the model; "unavailable"
+// means the browser refused to store it (private mode, full storage).
+export function saveSchedule(schedule: Schedule): "saved" | "invalid" | "unavailable" {
+  const parsed = scheduleSchema.safeParse(schedule);
+  if (!parsed.success) return "invalid";
   try {
-    localStorage.setItem(KEY, JSON.stringify(scheduleSchema.parse(schedule)));
-    return true;
+    localStorage.setItem(KEY, JSON.stringify(parsed.data));
+    return "saved";
   } catch {
-    return false;
+    return "unavailable";
   }
 }

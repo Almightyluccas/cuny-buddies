@@ -164,9 +164,10 @@ function DayColumn({
         </div>
       ))}
 
-      {removed.map((b) => (
+      {/* Removed blocks only matter where they can be restored. */}
+      {onToggleFree && removed.map((b) => (
         <button
-          key={`removed-${b.start}`}
+          key={`removed-${b.start}-${b.end}`}
           type="button"
           disabled={!onToggleFree}
           onClick={() => onToggleFree?.({ ...b, removed: true })}
@@ -180,7 +181,7 @@ function DayColumn({
 
       {free.map((b) => (
         <button
-          key={`free-${b.start}-${b.added}`}
+          key={`free-${b.start}-${b.end}-${b.added}`}
           type="button"
           disabled={!onToggleFree}
           onClick={() => onToggleFree?.(b)}
