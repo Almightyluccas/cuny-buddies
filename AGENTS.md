@@ -62,6 +62,13 @@ App Router project (`app/`). Currently close to the create-next-app scaffold:
 - **Uptime:** `GET /api/health` pings the DB (200 ok, 503 degraded).
   `.github/workflows/heartbeat.yml` probes it and key pages every 15 minutes
   and appends results to the `heartbeat-log` artifact.
+- **Schedules (`lib/schedule/`):** Schedule Builder PDFs are parsed in the
+  browser (`pdf.ts` → `lines.ts` → `parse.ts`); the file never leaves the
+  device. The parser finds fields by content, never by position, and only
+  meeting times are required. `free-time.ts` holds date and free-block math
+  (gaps of 30+ minutes between classes, 7:00–22:00). `model.ts` is the shape
+  the API validates. Add parser fixtures with `scripts/schedule-fixture.mts`,
+  replacing personal names.
 - **Campuses:** `lib/campuses.ts` lists every CUNY campus. Users store a
   primary `campusId`; matches are scoped to it. Never rename an existing id.
 - **Config:** connection string is `MONGODB_URI` in `.env.local` (gitignored);
