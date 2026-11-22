@@ -184,7 +184,7 @@ function DayColumn({
           type="button"
           disabled={!onToggleFree}
           onClick={() => onToggleFree?.(b)}
-          className="absolute inset-x-1 overflow-hidden rounded-md border border-emerald-300 bg-emerald-50 px-1 text-left text-[10px] leading-tight text-emerald-900 enabled:hover:bg-emerald-100"
+          className="absolute inset-x-1 z-10 overflow-hidden rounded-md border border-emerald-300 bg-emerald-50 px-1 text-left text-[10px] leading-tight text-emerald-900 enabled:hover:bg-emerald-100"
           style={{ top: top(b.start), height: (b.end - b.start) * MIN_PX }}
           aria-label={`Free ${formatTime(b.start)} to ${formatTime(b.end)}${onToggleFree ? ", tap to remove" : ""}`}
           title={`Free ${formatTime(b.start)}–${formatTime(b.end)}`}

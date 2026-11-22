@@ -147,7 +147,8 @@ export default function ProfileEditor() {
           <span className="font-semibold text-foreground">
             {displayName(formToUser(form))}
           </span>
-          .
+          {/* "Ron V." already ends the sentence. */}
+          {!displayName(formToUser(form)).endsWith(".") && "."}
         </p>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
