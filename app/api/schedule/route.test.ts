@@ -76,13 +76,15 @@ describe("/api/schedule", () => {
   });
 
   it("limits the body by bytes, not characters", async () => {
-    // 120,000 three-byte characters: well under 300,000 characters, over 300 KB.
-    const wide = JSON.stringify({ ...schedule, text: "€".repeat(120_000) });
-    expect(wide.length).toBeLessThan(300_000);
+    // The longest allowed text in 3-byte characters (600 KB) still fits.
+    expect((await post({ ...schedule, text: "€".repeat(200_000) })).status).toBe(200);
+    // 350,000 three-byte characters: under 1,000,000 characters, over 1 MB.
+    const wide = JSON.stringify({ ...schedule, text: "€".repeat(350_000) });
+    expect(wide.length).toBeLessThan(1_000_000);
     expect((await post(wide)).status).toBe(413);
     const declared = new Request("http://localhost/api/schedule", {
       method: "POST",
-      headers: { "content-length": "999999" },
+      headers: { "content-length": "2000000" },
       body: "{}",
     });
     expect((await POST(declared)).status).toBe(413);
@@ -101,7 +103,7 @@ describe("/api/schedule", () => {
     expect((await bad({ courses: [{ ...schedule.courses[0], meetings: [{ days: ["Mon"], start: 300, end: 400 }] }] })).status).toBe(400);
     expect((await bad({ addedFree: [{ day: "Mon", start: 600, end: 615 }] })).status).toBe(400); // under 30 minutes
     expect((await bad({ courses: [{ ...schedule.courses[0], startDate: "2026-13-01" }] })).status).toBe(400);
-    expect((await post("x".repeat(300_001))).status).toBe(413);
+    expect((await post("x".repeat(1_000_001))).status).toBe(413);
     expect(await getDb().collection(COLLECTIONS.schedules).countDocuments()).toBe(0);
   });
 });

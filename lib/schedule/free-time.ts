@@ -53,13 +53,16 @@ export function wideDays(schedule: Schedule): Set<Day> {
 }
 
 // A starting range for free time tapped at `minute` on `date`: from that
-// quarter hour for an hour, cut short by the next class, never under 30 min.
+// quarter hour (or the end of a class that just ended) for an hour, cut short
+// by the next class, never under 30 minutes. Students may still overlap a
+// class on purpose; this only picks the default.
 export function suggestRange(schedule: Schedule, date: string, minute: number): { start: number; end: number } {
-  let start = Math.max(DAY_START, Math.min(Math.floor(minute / 15) * 15, DAY_END - MIN_FREE_MINUTES));
-  const next = classesOn(schedule, date).find((c) => c.start > start)?.start ?? DAY_END;
-  const end = Math.max(Math.min(start + 60, next, DAY_END), start + MIN_FREE_MINUTES);
-  if (end > DAY_END) start = DAY_END - MIN_FREE_MINUTES;
-  return { start, end: Math.min(end, DAY_END) };
+  const classes = classesOn(schedule, date);
+  const justEnded = Math.max(DAY_START, ...classes.filter((c) => c.end <= minute).map((c) => c.end));
+  const start = Math.min(Math.max(Math.floor(minute / 15) * 15, justEnded), DAY_END - MIN_FREE_MINUTES);
+  const next = classes.find((c) => c.start > start)?.start ?? DAY_END;
+  const end = Math.min(Math.max(Math.min(start + 60, next), start + MIN_FREE_MINUTES), DAY_END);
+  return { start, end };
 }
 
 // Adds the same block on each day, skipping exact duplicates.

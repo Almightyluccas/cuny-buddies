@@ -142,6 +142,7 @@ describe("adding free time", () => {
     expect(suggestRange(s, "2026-08-31", 750)).toEqual({ start: 750, end: 780 }); // never under 30 min
     expect(suggestRange(s, "2026-08-31", 1315)).toEqual({ start: 1290, end: 1320 }); // ends by 22:00
     expect(suggestRange(s, "2026-08-31", 300)).toEqual({ start: 420, end: 480 }); // starts by 7:00
+    expect(suggestRange(s, "2026-08-31", 822)).toEqual({ start: 820, end: 880 }); // not inside the class ending 13:40
   });
 
   it("adds a block on each chosen day without duplicates", () => {

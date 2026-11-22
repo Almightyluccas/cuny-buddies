@@ -110,9 +110,12 @@ export function parseScheduleBuilder(lines: string[], today: string): ParseResul
   const courses: Course[] = [];
   const skipped: string[] = [];
   for (const tile of splitTiles(clean)) {
-    const course = parseTile(tile, term, fallback);
+    const { course, trimmed } = parseTile(tile, term, fallback);
     if (course.meetings.length) courses.push(course);
     else skipped.push(course.code ?? course.title ?? "A course");
+    if (trimmed && course.meetings.length) {
+      warnings.push(`${course.code ?? course.title ?? "A class"}: times outside 7 AM–10 PM were trimmed to that range.`);
+    }
   }
   if (!courses.length) warnings.push("No class times found in this file.");
   for (const name of skipped) warnings.push(`${name}: no meeting times found (online, TBA, or unreadable).`);
@@ -186,15 +189,22 @@ function isPageChrome(line: string) {
   );
 }
 
-function parseTile(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: DateRange): Course {
+function parseTile(
+  tile: Tile,
+  term: ReturnType<typeof parseTerm>,
+  fallback: DateRange,
+): { course: Course; trimmed: boolean } {
   const meetings = new Map<string, Meeting>();
   const course: Partial<Course> = { code: tile.code };
   let sawLocation = false;
+  let trimmed = false;
 
   for (const line of tile.lines) {
     for (const m of line.matchAll(new RegExp(MEETING_SRC, "gi"))) {
-      const meeting = toMeeting(m[1], m[2], m[3]);
-      if (!meeting) continue;
+      const parsed = toMeeting(m[1], m[2], m[3]);
+      if (!parsed) continue;
+      const { meeting } = parsed;
+      if (parsed.trimmed) trimmed = true;
       const key = `${meeting.days.join(",")}-${meeting.start}-${meeting.end}`;
       const after = line.slice((m.index ?? 0) + m[0].length).trim();
       const location =
@@ -248,7 +258,7 @@ function parseTile(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: Dat
   }
 
   const range = courseDates(tile, term, fallback);
-  return {
+  return { trimmed, course: {
     code: cap(course.code, 20),
     title: cap(findTitle(tile), 200),
     component: cap(course.component, 10),
@@ -265,7 +275,7 @@ function parseTile(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: Dat
     startDate: range.startDate,
     endDate: range.endDate,
     meetings: [...meetings.values()].slice(0, 20).map((m) => ({ ...m, location: cap(m.location, 200) })),
-  };
+  } };
 }
 
 function isNameLine(line: string) {
@@ -309,6 +319,12 @@ function parseTerm(text: string) {
 // A date range inside the tile but outside the term line is the class's own
 // (e.g. a shorter session); otherwise the class runs the whole term.
 function courseDates(tile: Tile, term: ReturnType<typeof parseTerm>, fallback: DateRange): DateRange {
+  // A print can list courses from different terms; each tile has its own.
+  const own = tile.termLine ? parseTerm(tile.termLine) : undefined;
+  if (own) {
+    term = own;
+    fallback = { startDate: own.startDate, endDate: own.endDate };
+  }
   const year = Number(fallback.startDate.slice(0, 4));
   for (const line of tile.lines) {
     if (TERM.test(line)) continue;
@@ -331,12 +347,20 @@ function dateRange(year: number, m1: string, d1: string, m2: string, d2: string)
   return startDate && endDate ? { startDate, endDate } : null;
 }
 
-function toMeeting(days: string, start: string, end: string): Meeting | null {
+// Times past 7:00–22:00 are trimmed to that range (and flagged) rather than
+// dropped, so a late class still blocks its time. Null when nothing is left.
+function toMeeting(days: string, start: string, end: string): { meeting: Meeting; trimmed: boolean } | null {
   const s = toMinutes(start);
   const e = toMinutes(end);
-  if (s === null || e === null || s >= e || s < DAY_START || e > DAY_END) return null;
+  if (s === null || e === null || s >= e) return null;
+  const clampedStart = Math.max(s, DAY_START);
+  const clampedEnd = Math.min(e, DAY_END);
+  if (clampedStart >= clampedEnd) return null;
   const list = days.split(",").map((d) => titleCase(d.trim()).slice(0, 3) as Day);
-  return { days: [...new Set(list)], start: s, end: e };
+  return {
+    meeting: { days: [...new Set(list)], start: clampedStart, end: clampedEnd },
+    trimmed: clampedStart !== s || clampedEnd !== e,
+  };
 }
 
 export function toMinutes(time: string): number | null {
@@ -352,8 +376,9 @@ export function toMinutes(time: string): number | null {
 function isoDate(year: number, month: string, day: string): string | null {
   const index = MONTHS.findIndex((m) => m.toLowerCase() === month.slice(0, 3).toLowerCase());
   const date = `${year}-${String(index + 1).padStart(2, "0")}-${day.padStart(2, "0")}`;
-  const parsed = new Date(`${date}T00:00:00Z`);
-  return index >= 0 && parsed.toISOString().slice(0, 10) === date ? date : null;
+  const parsed = new Date(`${date}T00:00:00Z`); // Invalid Date for e.g. day 0 or 99
+  if (index < 0 || Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10) === date ? date : null; // rejects Sep 31
 }
 
 function titleCase(s: string) {

@@ -31,6 +31,9 @@ import { loadSchedule, saveSchedule } from "@/lib/schedule/storage";
 
 const SCHEDULE_BUILDER = "https://sb.cunyfirst.cuny.edu/criteria";
 const TIMES = Array.from({ length: (DAY_END - DAY_START) / 15 + 1 }, (_, i) => DAY_START + i * 15);
+// Quarter hours plus the current value, which can be off-grid (a class ending at 12:40).
+const timeOptions = (times: number[], value: number) =>
+  times.includes(value) ? times : [...times, value].sort((a, b) => a - b);
 
 type Step = "choose" | "review";
 type Draft = { days: Day[]; start: number; end: number };
@@ -45,6 +48,7 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
   const [error, setError] = useState("");
   const [saveState, setSaveState] = useState<ReturnType<typeof saveSchedule> | "idle">("idle");
   const [draft, setDraft] = useState<Draft | null>(null); // free time being added from a tap
+  const [hasStored, setHasStored] = useState(false); // a schedule was saved before this visit
 
   // Browser-only state (storage, user agent) loads after mount to match SSR.
   useEffect(() => {
@@ -54,9 +58,20 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
     setWeek(stored ? initialWeek(stored, localToday()) : localToday());
     if (stored) {
       setSchedule(stored);
+      setHasStored(true);
       setStep("review");
     }
   }, []);
+
+  // Leaves the import screen without changing anything.
+  function backToSaved() {
+    const stored = loadSchedule();
+    if (!stored) return;
+    setSchedule(stored);
+    setWeek(initialWeek(stored, localToday()));
+    setError("");
+    setStep("review");
+  }
 
   // `save: false` only for the empty starting state of manual entry, so
   // choosing it doesn't wipe a saved schedule before anything is added.
@@ -159,6 +174,23 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
         </section>
 
         {error && <p role="alert" className="text-sm font-medium text-red-700">{error}</p>}
+
+        {(saveState === "saved" || hasStored || onFinish) && (
+          <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-5">
+            {saveState === "saved" || hasStored ? (
+              <Button type="button" variant="outline" onClick={backToSaved}>
+                Back to my schedule
+              </Button>
+            ) : (
+              <span />
+            )}
+            {onFinish && (
+              <Button type="button" variant="outline" onClick={onFinish}>
+                Skip for now
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -168,7 +200,18 @@ export default function ScheduleSetup({ onFinish }: { onFinish?: () => void }) {
     <div className="space-y-5">
       {warnings.length > 0 && (
         <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Check these:</p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-semibold">Check these:</p>
+            {schedule.warnings.length > 0 && (
+              <button
+                type="button"
+                className="text-xs font-semibold underline"
+                onClick={() => update({ ...schedule, warnings: [] })}
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
           <ul className="mt-1 list-disc pl-5">
             {warnings.map((w) => <li key={w}>{w}</li>)}
           </ul>
@@ -319,13 +362,13 @@ function FreeTimeForm({
         <label className="flex flex-col text-xs text-muted">
           From
           <select className={select} value={start} onChange={(e) => setStart(Number(e.target.value))}>
-            {TIMES.slice(0, -2).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
+            {timeOptions(TIMES.slice(0, -2), start).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
           </select>
         </label>
         <label className="flex flex-col text-xs text-muted">
           To
           <select className={select} value={end} onChange={(e) => setEnd(Number(e.target.value))}>
-            {TIMES.slice(2).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
+            {timeOptions(TIMES.slice(2), end).map((t) => <option key={t} value={t}>{formatTime(t)}</option>)}
           </select>
         </label>
         {onCancel && (

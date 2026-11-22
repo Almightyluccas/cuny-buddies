@@ -3,7 +3,8 @@ import { currentUserId } from "@/lib/auth";
 import { getSchedule, saveSchedule } from "@/lib/db/schedules";
 import { scheduleSchema } from "@/lib/schedule/model";
 
-const MAX_BYTES = 300_000; // extracted text is capped at 200,000 characters
+// The 200,000-character text field can take up to 3 bytes per character.
+const MAX_BYTES = 1_000_000;
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });

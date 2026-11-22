@@ -142,14 +142,44 @@ describe("partial or unusual prints", () => {
     expect(schedule.term).toMatchObject({ startDate: "2026-12-28", endDate: "2027-01-22" });
   });
 
-  it("drops times outside 7:00–22:00 or ending before they start", () => {
+  it("trims times past 7:00–22:00 with a warning and drops impossible ones", () => {
     const { schedule } = parseScheduleBuilder([
       "PHYS 20700 2026 Fall Term: Aug 28 - Dec 21",
       "Mon : 6:00 AM to 7:30 AM",
       "Tue : 3:00 PM to 2:00 PM",
       "Wed : 9:30 PM to 10:00 PM",
+      "Thu : 7:00 PM to 10:10 PM",
+      "Fri : 5:00 AM to 6:30 AM",
     ], TODAY);
-    expect(schedule.courses[0].meetings).toEqual([{ days: ["Wed"], start: 1290, end: 1320 }]);
+    expect(schedule.courses[0].meetings).toEqual([
+      { days: ["Mon"], start: 420, end: 450 },
+      { days: ["Wed"], start: 1290, end: 1320 },
+      { days: ["Thu"], start: 1140, end: 1320 },
+    ]);
+    expect(schedule.warnings).toEqual(["PHYS 20700: times outside 7 AM–10 PM were trimmed to that range."]);
+  });
+
+  it("dates each course by its own term line", () => {
+    const { schedule } = parseScheduleBuilder([
+      "CSC 10300 2026 Fall Term: Aug 28 - Dec 21",
+      "Mon : 9:00 AM to 10:15 AM",
+      "ENG 21000 2027 Winter Term: Jan 2 - Jan 25",
+      "Tue : 9:00 AM to 12:00 PM",
+    ], TODAY);
+    expect(schedule.courses.map((c) => [c.startDate, c.endDate])).toEqual([
+      ["2026-08-28", "2026-12-21"],
+      ["2027-01-02", "2027-01-25"],
+    ]);
+  });
+
+  it("skips day 0 or 99 instead of failing the import", () => {
+    const { schedule } = parseScheduleBuilder([
+      "BIO 10100 2026 Fall Term: Aug 28 - Dec 21",
+      "Fri : 10:00 AM to 12:00 PM",
+      "Sep 0 - Oct 16",
+      "Aug 99 - Dec 21",
+    ], TODAY);
+    expect(schedule.courses[0]).toMatchObject({ startDate: "2026-08-28", endDate: "2026-12-21" });
   });
 
   it("finds nothing in an unrelated document", () => {
