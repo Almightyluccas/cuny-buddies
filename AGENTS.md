@@ -61,7 +61,11 @@ App Router project (`app/`). Currently close to the create-next-app scaffold:
   `lib/mock-data.ts` until auth identifies the current user.
 - **Uptime:** `GET /api/health` pings the DB (200 ok, 503 degraded).
   `.github/workflows/heartbeat.yml` probes it and key pages every 15 minutes
-  and appends results to the `heartbeat-log` artifact.
+  and appends results to the `heartbeat-log` artifact. Sentry's uptime monitor
+  also checks `/api/health` every 5 minutes.
+- **Error monitoring:** Sentry (`instrumentation.ts`, `instrumentation-client.ts`,
+  options in `lib/sentry.ts`). Off without `NEXT_PUBLIC_SENTRY_DSN`; sends no
+  user info, cookies, or request bodies.
 - **Campuses:** `lib/campuses.ts` lists every CUNY campus. Users store a
   primary `campusId`; matches are scoped to it. Never rename an existing id.
 - **Config:** connection string is `MONGODB_URI` in `.env.local` (gitignored);
