@@ -47,10 +47,7 @@ function hasCompleteProfile(doc: UserDoc): doc is UserDoc & Omit<User, "id"> {
 function toUser(doc: UserDoc & Omit<User, "id">): User {
   const {
     _id,
-    email: _email,
     onboardingCompleted: _onboardingCompleted,
-    createdAt: _createdAt,
-    updatedAt: _updatedAt,
     ...profile
   } = doc;
   return { id: _id, ...profile };
@@ -107,10 +104,6 @@ export async function upsertUserAccount(account: {
 
   const firstName = account.firstName?.trim() ?? "";
   const lastName = account.lastName?.trim() ?? "";
-  if (!firstName || !lastName) {
-    throw new Error("WorkOS must provide first and last name for this account.");
-  }
-
   await users().updateOne(
     { _id: account.id },
     {

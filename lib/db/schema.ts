@@ -29,8 +29,8 @@ export const usersValidator = {
       _id: { bsonType: "string" }, // WorkOS user id; stable link for this account
       email: { bsonType: "string", minLength: 1 },
       onboardingCompleted: { bsonType: "bool" },
-      firstName: { bsonType: "string", minLength: 1 },
-      lastName: { bsonType: "string", minLength: 1 },
+      firstName: { bsonType: "string" },
+      lastName: { bsonType: "string" },
       showLastInitialOnly: { bsonType: "bool" },
       age: { bsonType: "number", minimum: 0 },
       gender: { enum: ["male", "female"] },
@@ -73,7 +73,11 @@ export const usersValidator = {
           "lookingFor",
           "socials",
         ],
-        properties: { onboardingCompleted: { enum: [true] } },
+        properties: {
+          onboardingCompleted: { enum: [true] },
+          firstName: { bsonType: "string", minLength: 1 },
+          lastName: { bsonType: "string", minLength: 1 },
+        },
       },
     ],
   },
