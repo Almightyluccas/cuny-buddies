@@ -10,22 +10,22 @@ if (!baseUrl || !logFile) {
   process.exit(2);
 }
 
-// Each page must contain text its own code renders, so a page that returns
-// 200 but fails to render (e.g. a streamed server error) counts as down.
-const PAGES = [
-  { path: "/", expect: "3 free" },
-  { path: "/matches", expect: "% match" },
-  { path: "/me", expect: "Save changes" },
-  { path: "/profile/maya-r", expect: "Hobbies" },
-];
+// Public pages must contain text their own code renders, so a page that
+// returns 200 but fails to render (e.g. a streamed server error) counts as down.
+const PAGES = [{ path: "/", expect: "Find your people between classes" }];
+// App pages require sign-in: a signed-out probe must be redirected to WorkOS
+// (and must not get the page itself).
+const PROTECTED = ["/matches", "/me", "/my-week", "/profile/maya-r"];
+const SIGN_IN = "https://api.workos.com/user_management/authorize";
 const TIMEOUT_MS = 10_000;
 
 // ms is time to response headers.
-async function probe(path, check) {
+async function probe(path, check, redirect = "follow") {
   const start = performance.now();
   try {
     const res = await fetch(baseUrl + path, {
       cache: "no-store",
+      redirect,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const ms = Math.round(performance.now() - start);
@@ -47,8 +47,15 @@ const checkPage = (expect) => async (res) => {
   return found ? {} : { ok: false, error: `missing "${expect}"` };
 };
 
+const checkSignInRedirect = async (res) => {
+  const location = res.headers.get("location") ?? "";
+  const redirected = res.status >= 300 && res.status < 400 && location.startsWith(SIGN_IN);
+  return redirected ? { ok: true } : { ok: false, error: "no sign-in redirect" };
+};
+
 const results = [await probe("/api/health", checkHealth)];
 for (const { path, expect } of PAGES) results.push(await probe(path, checkPage(expect)));
+for (const path of PROTECTED) results.push(await probe(path, checkSignInRedirect, "manual"));
 
 const entry = {
   time: new Date().toISOString(),
