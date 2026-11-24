@@ -10,6 +10,7 @@ import {
   isCampusId,
   type CampusId,
 } from "@/lib/campuses";
+import { ACADEMIC_YEARS, isAcademicYear } from "@/lib/years";
 import { currentUser } from "@/lib/mock-data";
 import type { Gender, SocialLink, User } from "@/lib/types";
 
@@ -41,7 +42,6 @@ type FormState = {
   instagram: string;
   linkedin: string;
   github: string;
-  unavailableSlots: string[];
 };
 
 const stages: { id: OnboardingStage; title: string }[] = [
@@ -168,7 +168,6 @@ function emptyForm(): FormState {
     instagram: "",
     linkedin: "",
     github: "",
-    unavailableSlots: [],
   };
 }
 
@@ -187,7 +186,6 @@ function userToForm(user: User): FormState {
     clubs: arrayToCsv(user.clubs),
     lookingFor: arrayToCsv(user.lookingFor),
     ...socialsToFields(user.socials),
-    unavailableSlots: user.unavailableSlots ?? [],
   };
 }
 
@@ -207,7 +205,6 @@ function formToUser(form: FormState): User {
     clubs: csvToArray(form.clubs),
     lookingFor: csvToArray(form.lookingFor),
     socials: fieldsToSocials(form),
-    unavailableSlots: form.unavailableSlots,
   };
 }
 
@@ -343,6 +340,10 @@ export default function OnboardingStep({
     }
     if (stage === "campus" && !isCampusId(form.campusId)) {
       setError("Select your primary campus to continue.");
+      return;
+    }
+    if (stage === "campus" && !isAcademicYear(form.year)) {
+      setError("Select your year to continue.");
       return;
     }
 
@@ -532,12 +533,16 @@ export default function OnboardingStep({
                       />
                     </Field>
                     <Field label="Year">
-                      <input
-                        placeholder="e.g. Sophomore"
+                      <select
                         className={inputClass}
-                        value={form.year}
+                        value={isAcademicYear(form.year) ? form.year : ""}
                         onChange={(event) => update("year", event.target.value)}
-                      />
+                      >
+                        <option value="">Select your year</option>
+                        {ACADEMIC_YEARS.map((year) => (
+                          <option key={year}>{year}</option>
+                        ))}
+                      </select>
                     </Field>
                   </div>
                 </div>
