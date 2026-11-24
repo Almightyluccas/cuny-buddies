@@ -1,0 +1,20 @@
+# Coverage report on PRs. Reads coverage/lcov.info from `npm run test:coverage`.
+coverage:
+  paths:
+    - coverage/lcov.info
+testExecutionTime:
+  steps:
+    - Test with coverage
+comment:
+  if: is_pull_request
+  updatePrevious: true
+summary:
+  if: true
+# Reports from main are stored so PRs show the coverage diff.
+report:
+  if: is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}

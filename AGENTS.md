@@ -37,29 +37,49 @@ inform the page layouts.
 ## Commands
 
 ```bash
+npm install -g npm@11.19.1  # expected npm (package.json packageManager); older npm rewrites the lockfile
 npm install        # required once; node_modules is gitignored
 npm run dev        # dev server at http://localhost:3000
 npm run build      # production build
 npm run start      # serve the production build
 npm run lint       # eslint (flat config in eslint.config.mjs)
+npm run typecheck  # generate route types, then tsc
+npm test           # vitest; DB tests use an in-memory MongoDB
+npm run test:coverage  # same, with coverage in coverage/
+npm run db:setup   # apply collections, validators, indexes (reads .env.local)
 ```
-
-There is no test setup yet.
 
 ## Architecture
 
 App Router project (`app/`). Currently close to the create-next-app scaffold:
 `layout.tsx` (root layout, Geist fonts), `page.tsx` (home), `globals.css`.
 
-- **Data layer (planned, not built):** `mongodb` and `server-only` are
-  dependencies but nothing connects to a database yet. Keep DB access in
-  server-only modules.
+- **Data layer (`lib/db/`):** MongoDB database `cuny-buddies`. `client.ts`
+  (shared client, Vercel pool cleanup), `schema.ts` (validators, indexes; rerun
+  `db:setup` after changing; changing a validator needs a dbAdmin user), `users.ts` (user queries). Only `lib/db` reads
+  `process.env`; import it from server code only. Pages still read
+  `lib/mock-data.ts` until auth identifies the current user.
+- **Uptime:** `GET /api/health` pings the DB (200 ok, 503 degraded).
+  `.github/workflows/heartbeat.yml` probes it and key pages every 15 minutes
+  and appends results to the `heartbeat-log` artifact. Sentry's uptime monitor
+  also checks `/api/health` every 5 minutes.
+- **Error monitoring:** Sentry (`instrumentation.ts`, `instrumentation-client.ts`,
+  options in `lib/sentry.ts`). Off without `NEXT_PUBLIC_SENTRY_DSN`; sends no
+  user info, cookies, or request bodies.
+- **Campuses:** `lib/campuses.ts` lists every CUNY campus. Users store a
+  primary `campusId`; matches are scoped to it. Never rename an existing id.
 - **Config:** connection string is `MONGODB_URI` in `.env.local` (gitignored);
   `.env.example` shows the shape.
+- **Sprint metrics:** `npm run metrics` (`scripts/sprint-metrics.mts`, math in
+  `lib/metrics.ts`) builds the sprint report tables from GitHub. Run it from
+  the "Sprint metrics" workflow, or locally with `GITHUB_TOKEN`.
 - **Styling:** Tailwind CSS v4, configured CSS-first in `app/globals.css`
   (`@import "tailwindcss"`, `@theme inline`). There is no `tailwind.config` file;
   Tailwind runs through the Turbopack loader wired in `next.config.ts`.
 - **Imports:** `@/*` maps to the repo root (see `tsconfig.json`).
+- **CI (`.github/workflows/ci.yml`):** lint, typecheck, tests with coverage,
+  and build on every PR and push to `main`. Octocov (`.octocov.yml`) comments
+  coverage on PRs.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

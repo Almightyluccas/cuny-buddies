@@ -5,6 +5,13 @@
 
 import { useEffect, useState } from "react";
 import Button from "@/components/Button";
+import OnboardingCalendar from "@/components/OnboardingCalendar";
+import {
+  BOROUGHS,
+  CAMPUSES,
+  isCampusId,
+  type CampusId,
+} from "@/lib/campuses";
 import {
   displayName,
   type Gender,
@@ -23,13 +30,14 @@ type FormState = {
   age: string;
   gender: Gender;
   showGender: boolean;
-  school: string;
+  campusId: CampusId;
   majors: string; // comma separated
   year: string;
   hobbies: string; // comma separated
   clubs: string; // comma separated
   lookingFor: string; // comma separated
   socials: string; // one per line: "Label, https://..."
+  unavailableSlots: string[];
 };
 
 const csvToArr = (s: string) =>
@@ -64,13 +72,15 @@ function userToForm(u: User): FormState {
     age: String(u.age),
     gender: u.gender,
     showGender: u.showGender,
-    school: u.school,
+    // Profiles saved before campuses existed have no valid campusId.
+    campusId: isCampusId(u.campusId) ? u.campusId : currentUser.campusId,
     majors: arrToCsv(u.majors),
     year: u.year,
     hobbies: arrToCsv(u.hobbies),
     clubs: arrToCsv(u.clubs),
     lookingFor: arrToCsv(u.lookingFor),
     socials: socialsToText(u.socials),
+    unavailableSlots: u.unavailableSlots ?? [],
   };
 }
 
@@ -83,13 +93,14 @@ function formToUser(f: FormState): User {
     age: Number(f.age) || 0,
     gender: f.gender,
     showGender: f.showGender,
-    school: f.school.trim(),
+    campusId: f.campusId,
     majors: csvToArr(f.majors),
     year: f.year.trim(),
     hobbies: csvToArr(f.hobbies),
     clubs: csvToArr(f.clubs),
     lookingFor: csvToArr(f.lookingFor),
     socials: textToSocials(f.socials),
+    unavailableSlots: f.unavailableSlots,
   };
 }
 
@@ -118,7 +129,18 @@ export default function ProfileEditor() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(formToUser(form)));
+      const currentProfile = localStorage.getItem(STORAGE_KEY);
+      const currentAvailability = currentProfile
+        ? (JSON.parse(currentProfile) as User).unavailableSlots
+        : undefined;
+      const user = formToUser(form);
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          ...user,
+          unavailableSlots: currentAvailability ?? user.unavailableSlots,
+        }),
+      );
       setSaved(true);
     } catch {
       // storage unavailable (e.g. private window); leave UI unchanged
@@ -187,12 +209,22 @@ export default function ProfileEditor() {
             onChange={(v) => set("showGender", v)}
           />
 
-          <Field label="School">
-            <input
+          <Field label="Primary campus">
+            <select
               className={input}
-              value={form.school}
-              onChange={(e) => set("school", e.target.value)}
-            />
+              value={form.campusId}
+              onChange={(e) => set("campusId", e.target.value as CampusId)}
+            >
+              {BOROUGHS.map((borough) => (
+                <optgroup key={borough} label={borough}>
+                  {CAMPUSES.filter((c) => c.borough === borough).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </Field>
           <Field label="Year">
             <input
@@ -249,6 +281,7 @@ export default function ProfileEditor() {
           )}
         </div>
       </div>
+      <OnboardingCalendar mode="profile" />
     </form>
   );
 }

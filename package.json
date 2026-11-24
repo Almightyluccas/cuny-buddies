@@ -2,13 +2,29 @@
   "name": "cuny-buddies",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.19.1",
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": ">=11.19.1",
+      "onFail": "warn"
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "db:setup": "tsx --env-file=.env.local scripts/db-setup.mts",
+    "metrics": "tsx scripts/sprint-metrics.mts"
   },
   "dependencies": {
+    "@sentry/nextjs": "^11.12.0",
+    "@vercel/functions": "^3.11.1",
+    "@workos-inc/authkit-nextjs": "^4.6.3",
     "mongodb": "^7.7.0",
     "next": "16.4.2",
     "react": "19.3.0",
@@ -20,9 +36,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "mongodb-memory-server": "^11.3.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }

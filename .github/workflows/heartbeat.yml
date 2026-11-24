@@ -1,0 +1,55 @@
+name: Heartbeat
+
+# Probes production every 15 minutes. Results accumulate in one rolling
+# `heartbeat-log` artifact (JSON lines) that the sprint metrics report reads.
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *" # off the top of the hour, when GitHub delays runs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write # read the previous log; delete it once the new one is saved
+
+concurrency:
+  group: heartbeat
+  cancel-in-progress: false
+
+env:
+  BASE_URL: https://cuny-buddies.vercel.app
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Restore previous log
+        id: prev
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=heartbeat-log&per_page=100" \
+            --jq '[.artifacts[] | select(.expired | not)] | sort_by(.created_at) | last | .id // empty')
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          if [ -n "$id" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > prev.zip
+            unzip -o prev.zip heartbeat.jsonl
+          fi
+
+      - name: Probe production
+        run: node scripts/heartbeat.mjs "$BASE_URL" heartbeat.jsonl
+
+      - name: Save log
+        id: save
+        if: ${{ !cancelled() && steps.prev.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: heartbeat-log
+          path: heartbeat.jsonl
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Delete previous log
+        if: ${{ !cancelled() && steps.save.outcome == 'success' && steps.prev.outputs.id != '' }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/${{ steps.prev.outputs.id }}"
