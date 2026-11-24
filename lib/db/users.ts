@@ -93,7 +93,7 @@ export async function upsertUserAccount(account: {
       { _id: account.id },
       {
         $set: {
-          email: account.email,
+          email,
           onboardingCompleted,
           updatedAt: now,
         },
