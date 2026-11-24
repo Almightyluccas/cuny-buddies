@@ -107,6 +107,21 @@ describe("users", () => {
     ).rejects.toThrow(/validation/i);
   });
 
+  it("trims the email on first and returning logins, and allows missing names until onboarding", async () => {
+    const col = getDb().collection(COLLECTIONS.users);
+    await upsertUserAccount({ id: "u1", email: " a@cuny.test ", firstName: null, lastName: null });
+    expect(await col.findOne({ _id: "u1" as never })).toMatchObject({
+      email: "a@cuny.test",
+      firstName: "",
+      lastName: "",
+      onboardingCompleted: false,
+    });
+    await upsertUserAccount({ id: "u1", email: " b@cuny.test ", firstName: null, lastName: null });
+    expect((await col.findOne({ _id: "u1" as never }))?.email).toBe("b@cuny.test");
+    // Completing onboarding still needs real names.
+    await expect(saveUser({ id: "u1", campusId: "ccny", ...base, firstName: "", lastName: "" })).rejects.toThrow(/validation/i);
+  });
+
   it("rejects an unknown campus at the DB level", async () => {
     await createLoginAccount("u1");
     await expect(
