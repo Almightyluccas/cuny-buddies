@@ -61,7 +61,11 @@ App Router project (`app/`). Currently close to the create-next-app scaffold:
   `lib/mock-data.ts` until auth identifies the current user.
 - **Uptime:** `GET /api/health` pings the DB (200 ok, 503 degraded).
   `.github/workflows/heartbeat.yml` probes it and key pages every 15 minutes
-  and appends results to the `heartbeat-log` artifact.
+  and appends results to the `heartbeat-log` artifact. Sentry's uptime monitor
+  also checks `/api/health` every 5 minutes.
+- **Error monitoring:** Sentry (`instrumentation.ts`, `instrumentation-client.ts`,
+  options in `lib/sentry.ts`). Off without `NEXT_PUBLIC_SENTRY_DSN`; sends no
+  user info, cookies, or request bodies.
 - **Schedules (`lib/schedule/`):** Schedule Builder PDFs are parsed in the
   browser (`pdf.ts` → `lines.ts` → `parse.ts`); the file never leaves the
   device. The parser finds fields by content, never by position, and only
