@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import OnboardingCalendar from "@/components/OnboardingCalendar";
+import OnboardingSchedule from "@/components/schedule/OnboardingSchedule";
 
-export const metadata: Metadata = { title: "Weekly availability · CUNY Buddies" };
+export const metadata: Metadata = { title: "Your schedule · CUNY Buddies" };
 
 export default function CalendarPage() {
-  return <OnboardingCalendar />;
+  return <OnboardingSchedule />;
 }

@@ -7,7 +7,7 @@ import { CAMPUS_IDS } from "@/lib/campuses";
 
 export const DB_NAME = "cuny-buddies";
 
-export const COLLECTIONS = { users: "users" } as const;
+export const COLLECTIONS = { users: "users", schedules: "schedules" } as const;
 
 const stringArray = { bsonType: "array", items: { bsonType: "string" } };
 
@@ -83,18 +83,38 @@ export const usersValidator = {
   },
 };
 
+// One schedule per user, keyed by user id. The API validates the full shape
+// (lib/schedule/model.ts); the database checks the essentials.
+export const schedulesValidator = {
+  $jsonSchema: {
+    bsonType: "object",
+    required: ["_id", "source", "courses", "addedFree", "removedFree", "createdAt", "updatedAt"],
+    properties: {
+      _id: { bsonType: "string" },
+      source: { enum: ["schedule-builder", "manual"] },
+      courses: { bsonType: "array", maxItems: 30 },
+      addedFree: { bsonType: "array", maxItems: 100 },
+      removedFree: { bsonType: "array", maxItems: 100 },
+      createdAt: { bsonType: "date" },
+      updatedAt: { bsonType: "date" },
+    },
+  },
+};
+
+async function applyValidator(db: Db, name: string, validator: object) {
+  const [existing] = await db.listCollections({ name }, { nameOnly: false }).toArray();
+  if (!existing) {
+    await db.createCollection(name, { validator });
+  } else if (!isDeepStrictEqual(existing.options?.validator, validator)) {
+    // collMod needs the dbAdmin role; readWrite users can only create.
+    await db.command({ collMod: name, validator });
+  }
+}
+
 // Idempotent: creates missing collections, updates validators, ensures indexes.
 export async function ensureSchema(db: Db) {
-  const [users] = await db
-    .listCollections({ name: COLLECTIONS.users }, { nameOnly: false })
-    .toArray();
-
-  if (!users) {
-    await db.createCollection(COLLECTIONS.users, { validator: usersValidator });
-  } else if (!isDeepStrictEqual(users.options?.validator, usersValidator)) {
-    // collMod needs the dbAdmin role; readWrite users can only create.
-    await db.command({ collMod: COLLECTIONS.users, validator: usersValidator });
-  }
+  await applyValidator(db, COLLECTIONS.users, usersValidator);
+  await applyValidator(db, COLLECTIONS.schedules, schedulesValidator);
 
   // Campus is the primary filter for listing and matching.
   await db.collection(COLLECTIONS.users).createIndex({ campusId: 1 });
