@@ -91,13 +91,24 @@ interface Tile {
 // Classes run this long from `today` when a print has no term dates.
 const FALLBACK_WEEKS = 16;
 
+// A real Schedule Builder print is a few hundred lines. Cap the input so an
+// unusually large file can't make the content scans run unbounded; the PDF
+// reader is time-limited, but parsing runs after it with no budget of its own.
+const MAX_PARSE_LINES = 4000;
+
 // `today` is the student's local date ("YYYY-MM-DD"), used only when the
 // print has no term dates. Every value is cut to the limits in model.ts, so
 // odd prints can't produce a schedule the server rejects.
 export function parseScheduleBuilder(lines: string[], today: string): ParseResult {
+  const tooLong = lines.length > MAX_PARSE_LINES;
   // Control characters carry nothing useful and bloat the stored text.
-  const clean = lines.map((l) => l.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
+  const clean = (tooLong ? lines.slice(0, MAX_PARSE_LINES) : lines)
+    .map((l) => l.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
   const warnings: string[] = [];
+  if (tooLong) {
+    warnings.push("This file was very long, so only the first part was read. Print just your schedule and try again.");
+  }
   const joined = clean.join("\n");
 
   const term = parseTerm(joined);

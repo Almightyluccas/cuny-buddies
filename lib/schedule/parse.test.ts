@@ -323,4 +323,16 @@ describe("review fixes", () => {
     expect(schedule.courses[0].waitlist).toHaveLength(20);
     expect(scheduleSchema.safeParse(schedule).success).toBe(true);
   });
+
+  it("caps very long input and warns instead of scanning it unbounded", () => {
+    const filler = Array.from({ length: 4100 }, () => "x");
+    const { schedule } = parseScheduleBuilder(
+      ["CSC 10300 2026 Fall Term: Aug 28 - Dec 21", "Mon : 9:00 AM to 10:15 AM", ...filler],
+      TODAY,
+    );
+    expect(schedule.courses).toHaveLength(1);
+    expect(schedule.warnings).toContain(
+      "This file was very long, so only the first part was read. Print just your schedule and try again.",
+    );
+  });
 });
