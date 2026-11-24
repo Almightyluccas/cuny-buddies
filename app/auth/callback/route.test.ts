@@ -46,7 +46,6 @@ const profile: Omit<User, "id"> = {
   clubs: ["ACM"],
   lookingFor: ["Friends"],
   socials: [{ label: "Instagram", url: "https://instagram.com/maya" }],
-  unavailableSlots: ["Mon-40"],
 };
 
 beforeAll(async () => {
